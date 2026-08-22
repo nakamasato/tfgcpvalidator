@@ -305,16 +305,35 @@ release-please、成果物を作るのは goreleaser であり、役割は重な
 
 1. main への conventional commit から release-please が Release PR を維持する
 2. その PR をマージすると release-please がタグと GitHub Release を作る
-3. Release の published を受けて goreleaser が linux/darwin × amd64/arm64 の
-   バイナリと `checksums.txt` を**既存の Release に追加**する (`release: mode: append`)
-4. 同じワークフローが `v0` の移動タグを最新のリリースへ付け替える
+3. **同じワークフロー実行の後続 job** が goreleaser を走らせ、
+   linux/darwin × amd64/arm64 のバイナリと `checksums.txt` を
+   **既存の Release に追加**する (`release: mode: append`)
+4. 同じ job が `v0` の移動タグを最新のリリースへ付け替える
+
+release-please は GitHub App のトークンで動かす。`GITHUB_TOKEN` はリポジトリ設定で
+明示的に許可しない限り PR を作成できず、また `GITHUB_TOKEN` による操作はイベントを
+起こさないため Release PR に CI が走らない。App トークンはどちらの制約も受けない。
+
+3 は同一ワークフロー実行内に置き、`on: release: published` を起点にしない。
+`GITHUB_TOKEN` による操作は `workflow_dispatch` と `repository_dispatch` を除き
+新しいワークフロー実行を起こさないため、その形にすると **トークンを App から
+`GITHUB_TOKEN` に戻した日に、バイナリの添付が黙って止まる**。同一実行内なら
+どのトークンで動かしても成立する。
 
 4 が必要なのは、release-please も goreleaser も `v0.1.0` のような具体的なタグしか
 作らないためである。Action 利用者は `uses: nakamasato/tfgcpvalidator@v0` で参照するので、
-誰かが `v0` を動かさない限りその参照は壊れたままになる。
+誰かが `v0` を動かさない限りその参照は壊れたままになる。移動タグは
+release-please の `major` 出力から組み立て、タグ名の文字列解析には依存しない。
 
-タグは semver。0.x のうちは互換性を約束せず、破壊的変更も minor で上げる
-(`bump-minor-pre-major`)。
+タグは semver。0.x のうちは互換性を約束せず、破壊的変更は minor、機能追加と
+修正は patch で上げる (`bump-minor-pre-major` と `bump-patch-for-minor-pre-major`)。
+これにより 0.x でも破壊的変更だけがバージョン上で見分けられる。
+
+release-please の既定は初回リリースが 1.0.0、かつタグに component 名を含める
+(`include-component-in-tag` の既定が true) ため、`initial-version` を 0.1.0 に、
+`include-component-in-tag` を false に明示する。前者を怠ると v0 から始められず、
+後者を怠るとタグが `tfgcpvalidator-v0.1.0` となり移動タグの算出が壊れる。
+`release.yml` はタグ形式を検証し、想定外なら移動タグを作らずに失敗する。
 
 ## 10. 今後
 
