@@ -195,11 +195,15 @@ replace でも Terraform は `before` の状態で削除 API を叩くため、
 
 ### Finding の内容
 
+ユーザー向けの文字列は README に合わせて英語で統一する。
+
 ```
 ERROR  google_sql_database_instance.main
-  deletion_protection = true のまま削除されようとしています。apply は必ず失敗します。
-  対処: (1) deletion_protection = false に変更して apply
-        (2) その後リソース定義を削除して apply
+  deletion_protection is set on this resource and it is being destroyed.
+  The apply will fail.
+  fix: Apply deletion_protection = false first, then apply the removal.
+       Terraform deletes with the value already in state, so both changes
+       cannot land in a single apply.
 ```
 
 Remediation には 2 段階の手順を必ず含める。1 回の apply で済むと誤解させないため。
