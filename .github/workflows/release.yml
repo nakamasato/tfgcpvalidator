@@ -1,0 +1,53 @@
+name: release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      # release-please already created the release, so goreleaser appends the
+      # binaries to it rather than creating one of its own.
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Point the major tag at this release
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          # A component-prefixed or hand-typed tag would silently produce a
+          # nonsense major tag, so refuse rather than publish one.
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "unexpected release tag format: $TAG" >&2; exit 1 ;;
+          esac
+
+          # Action users pin `uses: nakamasato/tfgcpvalidator@v0`, which nothing
+          # else moves: release-please only ever creates the exact version tag.
+          major="${TAG%%.*}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$major" "$TAG"
+          git push -f origin "refs/tags/$major"
+          echo "moved $major to $TAG"
