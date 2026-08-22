@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/nakamasato/tfgcpvalidator/internal/check"
@@ -114,4 +115,30 @@ func message(rc plan.ResourceChange, r rule) string {
 
 func remediation(r rule) string {
 	return fmt.Sprintf("Apply %s on its own first, then apply the removal. Terraform deletes with the value already in state, so both changes cannot land in a single apply.", r.fix)
+}
+
+// RulePaths returns the field paths this check matches, so the schema audit can
+// tell which of the provider's protection fields are already covered.
+func RulePaths() []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(rules))
+	for _, r := range rules {
+		if seen[r.path] {
+			continue
+		}
+		seen[r.path] = true
+		out = append(out, r.path)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// ExcludedPaths are protection-shaped fields deliberately left out, mapped to
+// why. The audit reports an unlisted field as uncovered, so a decision to skip
+// one has to be recorded here rather than forgotten.
+func ExcludedPaths() map[string]string {
+	return map[string]string{
+		"compute_instance_restore_properties.deletion_protection": "describes the instance a restore workload will recreate, not a guard on deleting the workload",
+		"deletion_protection_reason":                              "a human-readable reason string, not a flag that blocks deletion",
+	}
 }

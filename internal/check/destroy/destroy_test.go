@@ -250,3 +250,32 @@ func TestRemediationNamesTheFieldsOwnFixValue(t *testing.T) {
 		})
 	}
 }
+
+func TestRulePathsAreDeduplicatedAndSorted(t *testing.T) {
+	got := RulePaths()
+	want := []string{
+		"delete_protection",
+		"delete_protection_state",
+		"deletion_policy",
+		"deletion_protection",
+		"deletion_protection_enabled",
+		"enable_deletion_protection",
+		"settings.deletion_protection_enabled",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("RulePaths() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("RulePaths()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestExcludedPathsCarryAReason(t *testing.T) {
+	for path, reason := range ExcludedPaths() {
+		if reason == "" {
+			t.Errorf("%s is excluded with no reason recorded", path)
+		}
+	}
+}

@@ -45,6 +45,9 @@ func TestSchemaShapedPlan(t *testing.T) {
 
 	want := []string{
 		"google_bigquery_table.events",
+		// Bigtable spells deletion_protection as an enum, not a boolean.
+		"google_bigtable_table.events",
+		"google_firestore_database.db",
 		"google_project.sandbox",
 		// Reported twice: the Terraform-level deletion_protection and the
 		// API-level settings.deletion_protection_enabled block it independently.

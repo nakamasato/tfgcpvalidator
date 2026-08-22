@@ -1,17 +1,22 @@
 {
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "full_name": "registry.terraform.io/hashicorp/google",
+        "name": "google",
+        "version_constraint": "7.41.0"
+      }
+    }
+  },
   "format_version": "1.2",
-  "terraform_version": "1.14.3",
   "resource_changes": [
     {
       "address": "google_sql_database_instance.main",
-      "mode": "managed",
-      "type": "google_sql_database_instance",
-      "name": "main",
-      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete"
         ],
+        "after": null,
         "before": {
           "deletion_protection": true,
           "settings": [
@@ -19,113 +24,140 @@
               "deletion_protection_enabled": true
             }
           ]
-        },
-        "after": null
-      }
+        }
+      },
+      "mode": "managed",
+      "name": "main",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_sql_database_instance"
     },
     {
-      "address": "google_bigquery_table.events",
-      "mode": "managed",
-      "type": "google_bigquery_table",
-      "name": "events",
-      "provider_name": "registry.terraform.io/hashicorp/google",
+      "address": "google_bigtable_table.events",
       "change": {
         "actions": [
           "delete"
         ],
+        "after": null,
+        "before": {
+          "deletion_protection": "PROTECTED"
+        }
+      },
+      "mode": "managed",
+      "name": "events",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_bigtable_table"
+    },
+    {
+      "address": "google_bigquery_table.events",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "after": null,
         "before": {
           "deletion_protection": true
-        },
-        "after": null
-      }
+        }
+      },
+      "mode": "managed",
+      "name": "events",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_bigquery_table"
     },
     {
       "address": "module.gke.google_container_cluster.primary",
-      "mode": "managed",
-      "type": "google_container_cluster",
-      "name": "primary",
-      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete",
           "create"
         ],
+        "after": {},
         "before": {
           "deletion_protection": true
-        },
-        "after": {}
-      }
+        }
+      },
+      "mode": "managed",
+      "name": "primary",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_container_cluster"
     },
     {
       "address": "google_project.sandbox",
-      "mode": "managed",
-      "type": "google_project",
-      "name": "sandbox",
-      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete"
         ],
+        "after": null,
         "before": {
           "deletion_policy": "PREVENT"
-        },
-        "after": null
-      }
+        }
+      },
+      "mode": "managed",
+      "name": "sandbox",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_project"
+    },
+    {
+      "address": "google_firestore_database.db",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "after": null,
+        "before": {
+          "delete_protection_state": "DELETE_PROTECTION_ENABLED"
+        }
+      },
+      "mode": "managed",
+      "name": "db",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_firestore_database"
     },
     {
       "address": "google_storage_bucket.assets",
-      "mode": "managed",
-      "type": "google_storage_bucket",
-      "name": "assets",
-      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete"
         ],
-        "before": {},
-        "after": null
-      }
+        "after": null,
+        "before": {}
+      },
+      "mode": "managed",
+      "name": "assets",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_storage_bucket"
     },
     {
       "address": "google_compute_instance.worker",
-      "mode": "managed",
-      "type": "google_compute_instance",
-      "name": "worker",
-      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "create"
         ],
+        "after": {},
         "before": {
           "deletion_protection": false
-        },
-        "after": {}
-      }
+        }
+      },
+      "mode": "managed",
+      "name": "worker",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_compute_instance"
     },
     {
       "address": "data.google_project.current",
-      "mode": "data",
-      "type": "google_project",
-      "name": "current",
-      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "read"
         ],
+        "after": {},
         "before": {
           "deletion_policy": "PREVENT"
-        },
-        "after": {}
-      }
+        }
+      },
+      "mode": "data",
+      "name": "current",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "type": "google_project"
     }
   ],
-  "configuration": {
-    "provider_config": {
-      "google": {
-        "name": "google",
-        "full_name": "registry.terraform.io/hashicorp/google",
-        "version_constraint": "7.41.0"
-      }
-    }
-  }
+  "terraform_version": "1.14.3"
 }

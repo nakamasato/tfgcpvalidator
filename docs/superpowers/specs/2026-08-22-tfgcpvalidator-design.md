@@ -181,6 +181,22 @@ google 6.44.0 から 7.41.0 の間に保護フィールドを持つ箇所は 48 
 同じフィールド名は他クラウドの provider にも存在するため、
 `google_` で始まらない resource type は対象外とする。
 
+### ルール表の網羅性の維持
+
+`tools/schemaaudit` がこの表を provider スキーマに対して検査する。保護らしき
+フィールド名を全リソース型から拾い、ルール表がカバーするもの、意図的に除外した
+もの、どちらでもないものに分類し、3 つ目が 1 件でもあれば exit 1 とする。
+
+除外は `destroy.ExcludedPaths()` に理由付きで記録する。記録しない限り未カバー
+として失敗するため、判断の省略が黙って通ることはない。
+
+同じツールがテストフィクスチャも生成する。どちらもスキーマを読んでフィールド
+パスを解決し型と入れ子を検証する処理を共有しており、出口が違うだけである。
+
+`.github/workflows/schema-audit.yml` が週次と手動で走らせる。利用者のバイナリ
+には含めない保守用ツールであり、`validate` の挙動は provider バージョンに依存
+しない。
+
 3 つ目は `google_sql_database_instance` の罠に対応する。このリソースには
 Terraform 側の `deletion_protection` と GCP API 側の `settings.deletion_protection_enabled` という
 別々の保護が 2 つあり、後者が有効だと前者を false にしても apply は失敗する。
