@@ -20,6 +20,22 @@ inputs:
     description: 'Exit non-zero when a finding reaches this severity: error, warn or never'
     required: false
     default: error
+  comment:
+    description: >-
+      Post the findings as a pull request comment: `auto` for pull request
+      events only, or `true` or `false`
+    required: false
+    default: auto
+  label:
+    description: >-
+      Label to add while there are findings and remove once there are none.
+      Leave empty to leave labels alone.
+    required: false
+    default: ''
+  github-token:
+    description: Token used to write the comment and the label
+    required: false
+    default: ${{ github.token }}
   version:
     description: Release tag to install, or `latest`
     required: false
@@ -97,6 +113,9 @@ runs:
         # even when the report step is about to fail the job.
         tfgcpvalidator validate ${CHECK:+"$CHECK"} \
           --plan "$PLAN" --format json --fail-on never > "$findings"
+        tfgcpvalidator validate ${CHECK:+"$CHECK"} \
+          --plan "$PLAN" --format markdown --fail-on never \
+          > "$RUNNER_TEMP/tfgcpvalidator-findings.md"
 
         # The findings JSON embeds plan-controlled strings (resource addresses,
         # messages), so a fixed heredoc delimiter could be spoofed to inject
@@ -109,6 +128,18 @@ runs:
           echo "error-count=$(jq '.error_count' "$findings")"
           echo "warn-count=$(jq '.warn_count' "$findings")"
         } >> "$GITHUB_OUTPUT"
+
+    # Runs before Report because Report is what fails the job, and a skipped
+    # step would leave the pull request without the findings it just failed on.
+    - name: Comment and label
+      shell: bash
+      env:
+        COMMENT: ${{ inputs.comment }}
+        LABEL: ${{ inputs.label }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        FINDINGS: ${{ runner.temp }}/tfgcpvalidator-findings.json
+        MARKDOWN: ${{ runner.temp }}/tfgcpvalidator-findings.md
+      run: bash "$GITHUB_ACTION_PATH/scripts/comment.sh"
 
     - name: Report
       shell: bash

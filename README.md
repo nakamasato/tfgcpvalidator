@@ -87,15 +87,44 @@ names appear on other providers, and this tool does not claim to cover them.
 The action fails the job when a finding reaches the `fail-on` severity, which
 defaults to `error`, and annotates the run with every finding.
 
+On a pull request it also posts the findings as a comment. The same comment is
+reused on every run, and once the findings are gone it is hidden rather than
+left behind. A clean run never posts anything.
+
 | Input | Default | Description |
 | --- | --- | --- |
 | `plan` | *required* | Path to the output of `terraform show -json` |
 | `check` | every check | Name of a single check to run |
 | `format` | `github` | `text`, `markdown`, `github` or `json` |
 | `fail-on` | `error` | `error`, `warn` or `never` |
+| `comment` | `auto` | Post the comment: `auto` for pull request events only, or `true` or `false` |
+| `label` | none | Label to add while there are findings and remove once there are none |
+| `github-token` | `${{ github.token }}` | Token used for the comment and the label |
 | `version` | `latest` | Release tag to install |
 
 Outputs: `findings` (JSON), `error-count`, `warn-count`.
+
+The comment and the label need `pull-requests: write`:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+```
+
+Without it the action leaves a warning annotation and the job's success or
+failure is unaffected, which is what a pull request from a fork gets.
+
+Naming a `label` makes the findings usable as a merge condition — pair it with a
+branch protection rule, and a pull request cannot merge while the label is on
+it:
+
+```yaml
+- uses: nakamasato/tfgcpvalidator@v0
+  with:
+    plan: tfplan.json
+    label: deletion-protection
+```
 
 ### CLI
 
