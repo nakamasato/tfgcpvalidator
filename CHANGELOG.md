@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/nakamasato/tfgcpvalidator/compare/v0.1.0...v0.1.1) (2026-08-22)
+
+
+### Features
+
+* comment on the pull request and label it with the findings ([#5](https://github.com/nakamasato/tfgcpvalidator/issues/5)) ([df5a8be](https://github.com/nakamasato/tfgcpvalidator/commit/df5a8bee9500dfd65e04689017f1207ba465d9d4))
+
 ## 0.1.0 (2026-08-22)
 
 
