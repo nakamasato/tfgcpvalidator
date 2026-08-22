@@ -213,6 +213,10 @@ Remediation には 2 段階の手順を必ず含める。1 回の apply で済�
 | `github` | GitHub Actions のワークフローコマンド (`::error::`) によるアノテーション |
 | `json` | 他ツールとの連携 |
 
+既定値は常に `text` とし、実行環境による自動切替は行わない。
+GitHub Actions 上でアノテーションを出すには Action 側が `format: github` を明示的に渡す。
+環境変数を見て暗黙に切り替えると、出力が変わる理由が追えずデバッグを難しくするため。
+
 ## 7. GitHub Action
 
 リポジトリ直下の `action.yml` を composite action とし、
