@@ -83,10 +83,14 @@ runs:
         tfgcpvalidator validate ${CHECK:+"$CHECK"} \
           --plan "$PLAN" --format json --fail-on never > findings.json
 
+        # The findings JSON embeds plan-controlled strings (resource addresses,
+        # messages), so a fixed heredoc delimiter could be spoofed to inject
+        # extra $GITHUB_OUTPUT lines; a per-run random delimiter closes that.
+        delimiter="TFGCPVALIDATOR_EOF_$(openssl rand -hex 16)"
         {
-          echo "findings<<TFGCPVALIDATOR_EOF"
+          echo "findings<<$delimiter"
           cat findings.json
-          echo "TFGCPVALIDATOR_EOF"
+          echo "$delimiter"
           echo "error-count=$(jq '.error_count' findings.json)"
           echo "warn-count=$(jq '.warn_count' findings.json)"
         } >> "$GITHUB_OUTPUT"
