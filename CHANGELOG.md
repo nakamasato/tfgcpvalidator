@@ -1,0 +1,14 @@
+# Changelog
+
+## 0.1.0 (2026-08-22)
+
+
+### Features
+
+* catch deletion-protected destroys at plan time ([#1](https://github.com/nakamasato/tfgcpvalidator/issues/1)) ([7a19d1e](https://github.com/nakamasato/tfgcpvalidator/commit/7a19d1e4409ce1c3274109e0ffc86c8d3a06a17b))
+
+
+### Bug Fixes
+
+* make the release pipeline actually able to release ([#2](https://github.com/nakamasato/tfgcpvalidator/issues/2)) ([9c8e065](https://github.com/nakamasato/tfgcpvalidator/commit/9c8e0659c41a7b54981d457dbcca34dca82e1e0d))
+* restore the release workflow deleted in [#2](https://github.com/nakamasato/tfgcpvalidator/issues/2) ([#3](https://github.com/nakamasato/tfgcpvalidator/issues/3)) ([927b385](https://github.com/nakamasato/tfgcpvalidator/commit/927b3855bdaf171e5be2f59c86ee8c49ba11a0fd))
