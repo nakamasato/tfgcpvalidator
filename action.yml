@@ -58,16 +58,26 @@ runs:
           *) echo "unsupported operating system: $os" >&2; exit 1 ;;
         esac
 
+        archive="tfgcpvalidator_${os}_${arch}.tar.gz"
         base=https://github.com/nakamasato/tfgcpvalidator/releases
         if [ "$VERSION" = "latest" ]; then
-          url="$base/latest/download/tfgcpvalidator_${os}_${arch}.tar.gz"
+          rel="$base/latest/download"
         else
-          url="$base/download/${VERSION}/tfgcpvalidator_${os}_${arch}.tar.gz"
+          rel="$base/download/${VERSION}"
         fi
 
         dir="$RUNNER_TEMP/tfgcpvalidator"
         mkdir -p "$dir"
-        curl -sSfL "$url" | tar -xz -C "$dir" tfgcpvalidator
+        curl -sSfL -o "$dir/$archive" "$rel/$archive"
+        curl -sSfL -o "$dir/checksums.txt" "$rel/checksums.txt"
+
+        # sha256sum resolves the filename on each checksums.txt line relative to
+        # the current directory, and the download must be verified before
+        # anything extracts it, so both files need to already be in $dir.
+        cd "$dir"
+        grep -E " ${archive}\$" checksums.txt | sha256sum -c -
+
+        tar -xz -C "$dir" -f "$dir/$archive" tfgcpvalidator
         echo "$dir" >> "$GITHUB_PATH"
 
     - name: Collect findings
@@ -78,10 +88,15 @@ runs:
         CHECK: ${{ inputs.check }}
       run: |
         set -euo pipefail
+        # Composite steps run in the caller's checkout, so the findings file
+        # goes under $RUNNER_TEMP rather than $GITHUB_WORKSPACE to avoid
+        # dropping an untracked file into the user's working tree.
+        findings="$RUNNER_TEMP/tfgcpvalidator-findings.json"
+
         # --fail-on never keeps this step green so the outputs are always set,
         # even when the report step is about to fail the job.
         tfgcpvalidator validate ${CHECK:+"$CHECK"} \
-          --plan "$PLAN" --format json --fail-on never > findings.json
+          --plan "$PLAN" --format json --fail-on never > "$findings"
 
         # The findings JSON embeds plan-controlled strings (resource addresses,
         # messages), so a fixed heredoc delimiter could be spoofed to inject
@@ -89,10 +104,10 @@ runs:
         delimiter="TFGCPVALIDATOR_EOF_$(openssl rand -hex 16)"
         {
           echo "findings<<$delimiter"
-          cat findings.json
+          cat "$findings"
           echo "$delimiter"
-          echo "error-count=$(jq '.error_count' findings.json)"
-          echo "warn-count=$(jq '.warn_count' findings.json)"
+          echo "error-count=$(jq '.error_count' "$findings")"
+          echo "warn-count=$(jq '.warn_count' "$findings")"
         } >> "$GITHUB_OUTPUT"
 
     - name: Report

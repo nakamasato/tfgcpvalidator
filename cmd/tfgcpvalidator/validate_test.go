@@ -44,7 +44,6 @@ func writePlan(t *testing.T, body string) string {
 	return path
 }
 
-// execute runs the CLI and returns stdout plus the error the command returned.
 func execute(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	cmd := newRootCmd()

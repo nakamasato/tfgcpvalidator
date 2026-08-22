@@ -49,6 +49,10 @@ func TestProtectedDelete(t *testing.T) {
 			map[string]any{"settings": []any{map[string]any{"deletion_protection_enabled": false}}},
 			false,
 		},
+		{"deletion_protection string \"true\"", map[string]any{"deletion_protection": "true"}, false},
+		{"deletion_protection number 1", map[string]any{"deletion_protection": float64(1)}, false},
+		{"deletion_policy ABANDON", map[string]any{"deletion_policy": "ABANDON"}, false},
+		{"deletion_policy lowercase prevent", map[string]any{"deletion_policy": "prevent"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

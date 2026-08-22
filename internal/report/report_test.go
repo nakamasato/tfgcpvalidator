@@ -112,6 +112,51 @@ func TestGitHubEscapesNewlines(t *testing.T) {
 	}
 }
 
+func TestGitHubEscapesInjectedAddress(t *testing.T) {
+	findings := []check.Finding{{
+		Severity: check.Error,
+		Check:    "destroy",
+		Address:  "google_storage_bucket.b[\"a\nb::error::injected\"]",
+		Message:  "deletion_protection is set and this resource is being destroyed. The apply will fail.",
+	}}
+	got := render(t, "github", findings)
+	if strings.Count(got, "\n") != 1 {
+		t.Errorf("a newline inside the address must not produce a second line, got:\n%q", got)
+	}
+	if !strings.Contains(got, "%0A") {
+		t.Errorf("github output should escape the address's newline as %%0A, got:\n%q", got)
+	}
+}
+
+func TestMarkdownEscapesAddress(t *testing.T) {
+	findings := []check.Finding{{
+		Severity:    check.Error,
+		Check:       "destroy",
+		Address:     "google_storage_bucket.b[\"a|b`c\"]",
+		Message:     "deletion_protection is set",
+		Remediation: "fix it",
+	}}
+	got := render(t, "markdown", findings)
+	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+	var row string
+	for _, l := range lines {
+		if strings.Contains(l, "a") && strings.Contains(l, "deletion_protection is set") {
+			row = l
+			break
+		}
+	}
+	if row == "" {
+		t.Fatalf("could not find the finding's table row in:\n%s", got)
+	}
+	unescaped := strings.ReplaceAll(row, `\|`, "")
+	if strings.Count(unescaped, "|") != 5 {
+		t.Errorf("the pipe in the address must not add a table column (want 5 unescaped '|' for 4 columns), got row:\n%q", row)
+	}
+	if !strings.Contains(row, "deletion_protection is set") || !strings.Contains(row, "fix it") {
+		t.Errorf("the backtick in the address must not leak the rest of the row as markup, got row:\n%q", row)
+	}
+}
+
 func TestJSONIsParseable(t *testing.T) {
 	got := render(t, "json", sample)
 	var decoded struct {

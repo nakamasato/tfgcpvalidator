@@ -241,9 +241,14 @@ Docker action にしない理由は起動が遅く、self-hosted runner で嫌�
 
 ## 8. テスト戦略
 
-TDD で進める。各チェックは `testdata/` 配下の tfplan JSON フィクスチャに対する
-table-driven test で検証する。フィクスチャは手書きの最小 JSON とし、
-実際の `terraform show -json` 出力から必要部分のみを抽出したものを使う。
+TDD で進める。各チェックは Go のインラインの文字列定数と組み立てた値による
+table-driven test で検証する。この規模では `testdata/` 配下に tfplan JSON
+フィクスチャを置くよりテストコードの近くに入力が見える方が読みやすく、
+実装でもそちらを採用した。
+
+裏返しとして、実際の `terraform show -json` の出力を読ませるテストは
+1 本もない。Terraform の実出力の形について誤った前提を置いていても、
+このテストスイートは検知できない。
 
 最低限カバーするケース:
 
@@ -275,3 +280,28 @@ goreleaser で linux/darwin × amd64/arm64 のバイナリをビルドし GitHub
   resource type から必要ロール/権限へのマッピング表が必要で、Cloud Audit Logs の
   `authorizationInfo.permission` を用いて実測しながら育てる
 - **API 未有効化**
+
+### 2 つ目のチェックを足すとき何が変わるか
+
+データの継ぎ目は保たれる。`check.Input` はフィールド名付きの struct literal で
+組み立てているのでフィールド追加はソース互換であり、`Finding` は出力形式に
+依存しない値であり、4 種の reporter と `ShouldFail`/`Counts` はすべて
+`Severity` だけを見て動く。つまり新しいチェックが返す `Finding` は
+コード変更なしにどの出力形式にもそのまま流れる。
+
+一方で、「現在の構造に手を入れずに 2 つ目のチェックが差し込める」というのは
+半分しか正しくない。実際には次の 2 点で構造の変更が要る:
+
+- **CLI 層**: `cmd/tfgcpvalidator/validate.go` の `newCheckCmd` は汎用だが、
+  束縛しているのは `validateOpts` だけである。`Check` 自身が独自フラグを
+  登録するフックが無いため、`--project` のような固有フラグを要求する最初の
+  チェックが来た時点で `newCheckCmd` の作り直しが要る。変更自体は小さく
+  閉じているが、ゼロではない。
+- **エラー処理**: `check.Run` は最初にエラーを返したチェックでバッチ全体を
+  中断する。チェックが destroy の 1 つだけの今はこれで問題ないが、2 つ目
+  として GCP に到達する SA 権限チェックを足すと、GCP に到達できないだけで
+  `sa-permission` がエラーを返し、`destroy` が既に見つけていた Finding も
+  丸ごと握りつぶされ、exit code 2 で終わる。チェックを追加したことで
+  検証全体がむしろ安全でなくなる。2 つ目のチェックを出す前に、チェック単位で
+  エラーを分離する仕組みと、チェックが「自分はスキップした」と申告できる
+  何らかの手段が必要になる。
