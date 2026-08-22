@@ -1,3 +1,4 @@
 /dist/
 *.tfplan
 tfplan.binary
+/.superpowers/
