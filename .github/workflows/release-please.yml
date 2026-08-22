@@ -1,4 +1,4 @@
-name: release
+name: release-please
 
 on:
   push:
@@ -13,14 +13,11 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    outputs:
-      released: ${{ steps.release.outputs.releases_created }}
-      tag: ${{ steps.release.outputs.tag_name }}
-      major: ${{ steps.release.outputs.major }}
     steps:
-      # GITHUB_TOKEN cannot open pull requests unless the repository opts in, and
-      # anything it does raises no events, so the release pull request would get
-      # no CI. A GitHub App token has neither limitation.
+      # A GitHub App token, not GITHUB_TOKEN. GITHUB_TOKEN cannot open pull
+      # requests unless the repository opts in, and nothing it does raises
+      # events — which would leave the release pull request without CI and,
+      # worse, would never fire release.yml when the release is published.
       - uses: actions/create-github-app-token@v3
         id: app-token
         with:
@@ -28,56 +25,10 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
       # Maintains a release pull request from the conventional commits on main.
-      # Merging it is what cuts a version: this step then tags it and publishes
-      # the release, and the job below fills that release in.
+      # Merging it is what cuts a version: this tags it and publishes the
+      # release, and release.yml takes over from there.
       - uses: googleapis/release-please-action@v5
-        id: release
         with:
           token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-
-  # Kept in the same workflow run as the release rather than keyed on
-  # `release: published`. That event only fires for a release created by a token
-  # that raises events, so a separate workflow would silently stop attaching
-  # binaries the day the app token is swapped back for GITHUB_TOKEN.
-  artifacts:
-    needs: release-please
-    if: needs.release-please.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.release-please.outputs.tag }}
-          fetch-depth: 0
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-
-      # release-please already created the release, so goreleaser appends the
-      # binaries to it rather than creating one of its own.
-      - uses: goreleaser/goreleaser-action@v7
-        with:
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Point the major tag at this release
-        env:
-          TAG: ${{ needs.release-please.outputs.tag }}
-          MAJOR: ${{ needs.release-please.outputs.major }}
-        run: |
-          set -euo pipefail
-          # Action users pin `uses: nakamasato/tfgcpvalidator@v0`, which nothing
-          # else moves: release-please only ever creates the exact version tag.
-          case "$MAJOR" in
-            ''|*[!0-9]*) echo "unexpected major version: '$MAJOR'" >&2; exit 1 ;;
-          esac
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -f "v$MAJOR" "$TAG"
-          git push -f origin "refs/tags/v$MAJOR"
-          echo "moved v$MAJOR to $TAG"
