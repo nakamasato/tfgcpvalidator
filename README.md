@@ -2,8 +2,6 @@
 
 Catch Terraform failures on Google Cloud at plan time, before `apply` breaks something.
 
-> Status: early design. Not yet usable.
-
 ## The problem
 
 A standard Terraform pipeline assumes that `terraform plan` is an accurate preview of `terraform apply`. On Google Cloud, `deletion_protection` breaks that assumption.
@@ -52,6 +50,50 @@ v1 covers destroys:
 
 - A resource is being destroyed while `deletion_protection = true` or `deletion_policy = "PREVENT"` is still set — **error**, because the apply is guaranteed to fail.
 - A resource is being replaced, since a replace deletes before it creates and fails the same way — **error**.
+
+## Usage
+
+### GitHub Actions
+
+```yaml
+- run: terraform plan -out tfplan.binary
+- run: terraform show -json tfplan.binary > tfplan.json
+
+- uses: nakamasato/tfgcpvalidator@v1
+  with:
+    plan: tfplan.json
+```
+
+The action fails the job when a finding reaches the `fail-on` severity, which
+defaults to `error`, and annotates the run with every finding.
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `plan` | *required* | Path to the output of `terraform show -json` |
+| `check` | every check | Name of a single check to run |
+| `format` | `github` | `text`, `markdown`, `github` or `json` |
+| `fail-on` | `error` | `error`, `warn` or `never` |
+| `version` | `latest` | Release tag to install |
+
+Outputs: `findings` (JSON), `error-count`, `warn-count`.
+
+### CLI
+
+```bash
+go install github.com/nakamasato/tfgcpvalidator/cmd/tfgcpvalidator@latest
+
+terraform plan -out tfplan.binary
+terraform show -json tfplan.binary > tfplan.json
+
+tfgcpvalidator validate --plan tfplan.json          # every check
+tfgcpvalidator validate destroy --plan tfplan.json  # one check
+```
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | No finding reached the `--fail-on` severity |
+| `1` | A finding reached it |
+| `2` | The tool itself failed, for example an unreadable plan |
 
 ## Where this is going
 
