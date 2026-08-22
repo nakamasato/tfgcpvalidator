@@ -262,7 +262,7 @@ goreleaser が GitHub Release に置いた各 OS/arch のバイナリを取得�
 Docker action にしない理由は起動が遅く、self-hosted runner で嫌われるため。
 
 ```yaml
-- uses: nakamasato/tfgcpvalidator@v1
+- uses: nakamasato/tfgcpvalidator@v0
   with:
     plan: tfplan.json
     check: destroy       # 省略時は全チェック
@@ -301,7 +301,8 @@ CLI レベルでは exit code (0 / 1 / 2) と各 format の出力を検証する
 ## 9. リリース
 
 goreleaser で linux/darwin × amd64/arm64 のバイナリをビルドし GitHub Release に配置する。
-タグは semver。Action は `v1` の移動タグを維持する。
+タグは semver。0.x のうちは互換性を約束しない。
+Action 利用者向けに `v0` の移動タグを維持する。
 
 ## 10. 今後
 

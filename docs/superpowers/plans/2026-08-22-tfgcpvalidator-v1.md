@@ -2040,7 +2040,7 @@ Delete this line near the top of `README.md`:
 - run: terraform plan -out tfplan.binary
 - run: terraform show -json tfplan.binary > tfplan.json
 
-- uses: nakamasato/tfgcpvalidator@v1
+- uses: nakamasato/tfgcpvalidator@v0
   with:
     plan: tfplan.json
 ```

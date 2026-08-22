@@ -76,7 +76,7 @@ names appear on other providers, and this tool does not claim to cover them.
 - run: terraform plan -out tfplan.binary
 - run: terraform show -json tfplan.binary > tfplan.json
 
-- uses: nakamasato/tfgcpvalidator@v1
+- uses: nakamasato/tfgcpvalidator@v0
   with:
     plan: tfplan.json
 ```
