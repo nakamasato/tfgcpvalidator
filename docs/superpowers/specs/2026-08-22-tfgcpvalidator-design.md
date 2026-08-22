@@ -67,16 +67,28 @@ HCL の内側に書いたガードは、リソースが HCL から消える瞬�
 
 ## 3. CLI 設計
 
-チェックごとにサブコマンドを分けず、単一の `validate` コマンドとチェックレジストリで構成する。
-Action は 1 回の実行で 1 つのレポート (PR コメント) を出したいため、
-分割すると step も PR コメントも分裂する。デバッグ用に `--check` で絞れれば足りる。
+チェックごとにサブコマンドを切り、親コマンド `validate` が登録済みの全チェックを実行する。
 
 ```
-tfgcpvalidator validate \
-  --plan tfplan.json \                  # 必須。terraform show -json の出力
-  --check destroy \                     # 既定: 登録済みの全チェック
-  --format text|markdown|github|json \  # 既定: text
-  --fail-on error|warn|never            # 既定: error
+tfgcpvalidator validate --plan tfplan.json          # 全チェックを実行
+tfgcpvalidator validate destroy --plan tfplan.json  # destroy のみ
+```
+
+チェック固有のフラグはそのチェックのサブコマンドにのみ置く (v2 の `sa-permission` であれば
+`--project` など)。親から全実行する場合は既定値を使い、将来的には設定ファイルで与える。
+
+両経路とも共通の runner とレポータを通すため、出力は完全に同一になる。
+これにより Action は `validate` を 1 回呼ぶだけで済み、
+CI の step と PR コメントが分裂しない。
+
+### 共通フラグ
+
+親・サブコマンドの双方で受け付ける。
+
+```
+--plan tfplan.json                  # 必須。terraform show -json の出力
+--format text|markdown|github|json  # 既定: text
+--fail-on error|warn|never          # 既定: error
 ```
 
 ### 終了コード
@@ -94,9 +106,9 @@ CI が「チェック失敗」と「ツール故障」を区別できるよう�
 Go module: `github.com/nakamasato/tfgcpvalidator`
 
 ```
-cmd/tfgcpvalidator/       cobra エントリポイント
+cmd/tfgcpvalidator/       cobra エントリポイント (validate 親 + 各チェックのサブコマンド)
 internal/plan/            tfplan JSON から正規化した ResourceChange へ
-internal/check/           Check interface + レジストリ
+internal/check/           Check interface + レジストリ + runner
   └ destroy/              destroy チェック実装
 internal/report/          text / markdown / github / json 出力
 action.yml                composite action
@@ -204,14 +216,15 @@ Remediation には 2 段階の手順を必ず含める。1 回の apply で済�
 ## 7. GitHub Action
 
 リポジトリ直下の `action.yml` を composite action とし、
-goreleaser が GitHub Release に置いた各 OS/arch のバイナリを取得して実行する。
+goreleaser が GitHub Release に置いた各 OS/arch のバイナリを取得し、
+`check` が指定されていればそのサブコマンドを、省略されていれば親 `validate` を実行する。
 Docker action にしない理由は起動が遅く、self-hosted runner で嫌われるため。
 
 ```yaml
 - uses: nakamasato/tfgcpvalidator@v1
   with:
     plan: tfplan.json
-    checks: destroy      # 既定: 全て
+    check: destroy       # 省略時は全チェック
     fail-on: error       # 既定: error
     format: github       # 既定: github
 ```
