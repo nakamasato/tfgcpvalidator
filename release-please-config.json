@@ -5,7 +5,9 @@
       "release-type": "go",
       "package-name": "tfgcpvalidator",
       "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
       "include-v-in-tag": true,
+      "include-component-in-tag": false,
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true
     }

@@ -37,6 +37,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # A component-prefixed or otherwise unexpected tag would silently
+          # produce a nonsense major tag, so refuse rather than publish one.
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "unexpected release tag format: $TAG" >&2; exit 1 ;;
+          esac
+
           # Action users pin `uses: nakamasato/tfgcpvalidator@v0`, which nothing
           # else moves: release-please only ever creates the exact version tag.
           major="${TAG%%.*}"

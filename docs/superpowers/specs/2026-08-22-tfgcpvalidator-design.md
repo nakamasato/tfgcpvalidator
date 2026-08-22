@@ -313,8 +313,15 @@ release-please、成果物を作るのは goreleaser であり、役割は重な
 作らないためである。Action 利用者は `uses: nakamasato/tfgcpvalidator@v0` で参照するので、
 誰かが `v0` を動かさない限りその参照は壊れたままになる。
 
-タグは semver。0.x のうちは互換性を約束せず、破壊的変更も minor で上げる
-(`bump-minor-pre-major`)。
+タグは semver。0.x のうちは互換性を約束せず、破壊的変更は minor、機能追加と
+修正は patch で上げる (`bump-minor-pre-major` と `bump-patch-for-minor-pre-major`)。
+これにより 0.x でも破壊的変更だけがバージョン上で見分けられる。
+
+release-please の既定は初回リリースが 1.0.0、かつタグに component 名を含める
+(`include-component-in-tag` の既定が true) ため、`initial-version` を 0.1.0 に、
+`include-component-in-tag` を false に明示する。前者を怠ると v0 から始められず、
+後者を怠るとタグが `tfgcpvalidator-v0.1.0` となり移動タグの算出が壊れる。
+`release.yml` はタグ形式を検証し、想定外なら移動タグを作らずに失敗する。
 
 ## 10. 今後
 
