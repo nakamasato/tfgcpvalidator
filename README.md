@@ -2,6 +2,10 @@
 
 Catch Terraform failures on Google Cloud at plan time, before `apply` breaks something.
 
+> Status: preview. The checks are tested and the interface works, but nothing has
+> run this against production infrastructure yet. Expect the flags and output to
+> move before v1.
+
 ## The problem
 
 A standard Terraform pipeline assumes that `terraform plan` is an accurate preview of `terraform apply`. On Google Cloud, `deletion_protection` breaks that assumption.

@@ -17,7 +17,7 @@ jobs:
       # Maintains a release pull request from the conventional commits on main.
       # Merging it is what cuts a version: this action then tags it and
       # publishes the release, which is what release.yml waits for.
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
