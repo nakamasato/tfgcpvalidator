@@ -34,3 +34,40 @@ jobs:
 
       - name: Test
         run: go test -race ./...
+
+      - name: Lint the action scripts
+        run: shellcheck scripts/*.sh
+
+      - name: Test the action scripts
+        run: bash scripts/comment_test.sh
+
+  # Runs the action on itself, so a break in the action wiring shows up here
+  # rather than in someone else's pipeline after a release.
+  action:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: validate
+        uses: ./
+        with:
+          plan: internal/check/destroy/testdata/schema_shaped_plan.json
+          fail-on: never
+          label: tfgcpvalidator
+
+      - name: Check the outputs
+        env:
+          ERRORS: ${{ steps.validate.outputs.error-count }}
+        run: |
+          set -euo pipefail
+          # The exact count moves whenever the fixture is regenerated against a
+          # newer provider, so only the fact that the fixture still trips the
+          # check is worth asserting here.
+          if [ -z "$ERRORS" ] || [ "$ERRORS" -lt 1 ]; then
+            echo "expected the fixture plan to produce errors, got: '$ERRORS'" >&2
+            exit 1
+          fi
