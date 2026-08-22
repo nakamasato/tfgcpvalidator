@@ -1,0 +1,28 @@
+version: 2
+
+builds:
+  - id: tfgcpvalidator
+    main: ./cmd/tfgcpvalidator
+    binary: tfgcpvalidator
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  # The composite action builds this exact filename, so changing the template
+  # breaks every pinned action version.
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
