@@ -1,0 +1,115 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.14.3",
+  "resource_changes": [
+    {
+      "address": "google_sql_database_instance.main",
+      "mode": "managed",
+      "type": "google_sql_database_instance",
+      "name": "main",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "deletion_protection": true,
+          "settings": [
+            {
+              "deletion_protection_enabled": true
+            }
+          ]
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "google_bigquery_table.events",
+      "mode": "managed",
+      "type": "google_bigquery_table",
+      "name": "events",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "deletion_protection": true
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "module.gke.google_container_cluster.primary",
+      "mode": "managed",
+      "type": "google_container_cluster",
+      "name": "primary",
+      "change": {
+        "actions": [
+          "delete",
+          "create"
+        ],
+        "before": {
+          "deletion_protection": true
+        },
+        "after": {}
+      }
+    },
+    {
+      "address": "google_project.sandbox",
+      "mode": "managed",
+      "type": "google_project",
+      "name": "sandbox",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "deletion_policy": "PREVENT"
+        },
+        "after": null
+      }
+    },
+    {
+      "address": "google_storage_bucket.assets",
+      "mode": "managed",
+      "type": "google_storage_bucket",
+      "name": "assets",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {},
+        "after": null
+      }
+    },
+    {
+      "address": "google_compute_instance.worker",
+      "mode": "managed",
+      "type": "google_compute_instance",
+      "name": "worker",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": {
+          "deletion_protection": false
+        },
+        "after": {}
+      }
+    },
+    {
+      "address": "data.google_project.current",
+      "mode": "data",
+      "type": "google_project",
+      "name": "current",
+      "change": {
+        "actions": [
+          "read"
+        ],
+        "before": {
+          "deletion_policy": "PREVENT"
+        },
+        "after": {}
+      }
+    }
+  ]
+}
