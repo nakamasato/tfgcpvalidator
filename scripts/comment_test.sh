@@ -52,7 +52,7 @@ run() {
   local out
   out=$(
     GITHUB_REPOSITORY=o/r \
-      GITHUB_EVENT_PATH="${GITHUB_EVENT_PATH:-$work/event.json}" \
+      GITHUB_EVENT_PATH="${TEST_EVENT:-$work/event.json}" \
       MARKDOWN="$work/report.md" \
       GH_TOKEN=x \
       bash "$here/comment.sh" 2>&1
@@ -124,7 +124,7 @@ COMMENT=false LABEL='' run "nothing to do exits early" '!api'
 GH_FAIL=1 WANT_STATUS=0 run "an API failure warns instead of failing the job" \
   'issues/7/comments'
 
-GITHUB_EVENT_PATH=/nonexistent WANT_STATUS=0 run "an event without a pull request is skipped" '!api'
+TEST_EVENT=/nonexistent WANT_STATUS=0 run "an event without a pull request is skipped" '!api'
 
 COMMENT=bogus WANT_STATUS=2 run "an invalid comment input is rejected" '!api'
 
