@@ -49,6 +49,17 @@ func TestProtectedDelete(t *testing.T) {
 			map[string]any{"settings": []any{map[string]any{"deletion_protection_enabled": false}}},
 			false,
 		},
+		{"top level deletion_protection_enabled true", map[string]any{"deletion_protection_enabled": true}, true},
+		{"top level deletion_protection_enabled false", map[string]any{"deletion_protection_enabled": false}, false},
+		{"bigtable deletion_protection PROTECTED", map[string]any{"deletion_protection": "PROTECTED"}, true},
+		{"bigtable deletion_protection UNPROTECTED", map[string]any{"deletion_protection": "UNPROTECTED"}, false},
+		{"firestore delete_protection_state enabled", map[string]any{"delete_protection_state": "DELETE_PROTECTION_ENABLED"}, true},
+		{"firestore delete_protection_state disabled", map[string]any{"delete_protection_state": "DELETE_PROTECTION_DISABLED"}, false},
+		{"firestore delete_protection_state unspecified", map[string]any{"delete_protection_state": "DELETE_PROTECTION_STATE_UNSPECIFIED"}, false},
+		{"delete_protection true", map[string]any{"delete_protection": true}, true},
+		{"delete_protection false", map[string]any{"delete_protection": false}, false},
+		{"enable_deletion_protection true", map[string]any{"enable_deletion_protection": true}, true},
+		{"enable_deletion_protection false", map[string]any{"enable_deletion_protection": false}, false},
 		{"deletion_protection string \"true\"", map[string]any{"deletion_protection": "true"}, false},
 		{"deletion_protection number 1", map[string]any{"deletion_protection": float64(1)}, false},
 		{"deletion_policy ABANDON", map[string]any{"deletion_policy": "ABANDON"}, false},
@@ -177,5 +188,65 @@ func TestBothProtectionsOnOneResourceReportBoth(t *testing.T) {
 func TestNilPlanIsAnError(t *testing.T) {
 	if _, err := New().Run(context.Background(), check.Input{}); err == nil {
 		t.Fatal("Run() error = nil, want an error when the plan is missing")
+	}
+}
+
+func TestOnlyGoogleResourceTypesAreChecked(t *testing.T) {
+	protected := map[string]any{"deletion_protection": true}
+
+	tests := []struct {
+		resourceType string
+		wantHit      bool
+	}{
+		{"google_sql_database_instance", true},
+		{"google_bigtable_table", true},
+		{"aws_db_instance", false},
+		{"azurerm_mssql_server", false},
+		{"random_pet", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.resourceType, func(t *testing.T) {
+			findings := run(t, managed(tt.resourceType+".x", tt.resourceType,
+				change([]string{"delete"}, protected)))
+			if got := len(findings) > 0; got != tt.wantHit {
+				t.Errorf("findings present = %v, want %v", got, tt.wantHit)
+			}
+		})
+	}
+}
+
+// A restore workload describes the instance it will recreate, so its nested
+// deletion_protection says nothing about deleting the workload itself.
+func TestNestedRestorePropertyIsNotAProtection(t *testing.T) {
+	before := map[string]any{
+		"compute_instance_restore_properties": []any{map[string]any{"deletion_protection": true}},
+	}
+	findings := run(t, managed("google_backup_dr_restore_workload.x", "google_backup_dr_restore_workload",
+		change([]string{"delete"}, before)))
+	if len(findings) != 0 {
+		t.Errorf("len(findings) = %d, want 0: %+v", len(findings), findings)
+	}
+}
+
+func TestRemediationNamesTheFieldsOwnFixValue(t *testing.T) {
+	tests := []struct {
+		name   string
+		before map[string]any
+		want   string
+	}{
+		{"bigtable string", map[string]any{"deletion_protection": "PROTECTED"}, `deletion_protection = "UNPROTECTED"`},
+		{"firestore state", map[string]any{"delete_protection_state": "DELETE_PROTECTION_ENABLED"}, `delete_protection_state = "DELETE_PROTECTION_DISABLED"`},
+		{"bool flag", map[string]any{"enable_deletion_protection": true}, "enable_deletion_protection = false"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			findings := run(t, managed("google_x.a", "google_x", change([]string{"delete"}, tt.before)))
+			if len(findings) != 1 {
+				t.Fatalf("len(findings) = %d, want 1", len(findings))
+			}
+			if !strings.Contains(findings[0].Remediation, tt.want) {
+				t.Errorf("Remediation = %q, want it to name %q", findings[0].Remediation, tt.want)
+			}
+		})
 	}
 }

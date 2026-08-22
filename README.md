@@ -48,8 +48,25 @@ No maintained tool addresses `deletion_protection` and destroy directly.
 
 v1 covers destroys:
 
-- A resource is being destroyed while `deletion_protection = true` or `deletion_policy = "PREVENT"` is still set — **error**, because the apply is guaranteed to fail.
+- A resource is being destroyed while a deletion-protection field is still set — **error**, because the apply is guaranteed to fail.
 - A resource is being replaced, since a replace deletes before it creates and fails the same way — **error**.
+
+The fields it matches, and the value that blocks a delete:
+
+| Field | Blocking value |
+| --- | --- |
+| `deletion_protection` | `true`, or `"PROTECTED"` where the provider spells it as an enum |
+| `deletion_protection_enabled` | `true` |
+| `settings.deletion_protection_enabled` | `true` |
+| `deletion_policy` | `"PREVENT"` |
+| `delete_protection_state` | `"DELETE_PROTECTION_ENABLED"` |
+| `delete_protection` | `true` |
+| `enable_deletion_protection` | `true` |
+
+These are field names, not a list of resource types, so a resource type that
+gains deletion protection in a future provider release is covered without a
+change here. Resource types outside Google Cloud are skipped: the same field
+names appear on other providers, and this tool does not claim to cover them.
 
 ## Usage
 

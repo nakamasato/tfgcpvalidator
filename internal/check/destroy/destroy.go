@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/nakamasato/tfgcpvalidator/internal/check"
 	"github.com/nakamasato/tfgcpvalidator/internal/plan"
@@ -29,13 +30,30 @@ type rule struct {
 	fix string
 }
 
+// Every entry is a field NAME, never a resource type. Google Cloud adds
+// deletion protection to new resource types continuously — between provider
+// 6.44.0 and 7.41.0 the number of protection-bearing fields went from 48 to 868
+// — so matching on names is what keeps this working for types that do not exist
+// yet. The names themselves come from auditing the provider schema.
+//
 // google_sql_database_instance carries two independent protections: the
 // Terraform-level deletion_protection and the API-level
 // settings.deletion_protection_enabled. Clearing one leaves the other blocking.
+//
+// Nested paths are declared explicitly rather than searched for, which is what
+// keeps google_backup_dr_restore_workload's
+// compute_instance_restore_properties.deletion_protection out: it describes the
+// instance that workload will recreate, not a guard on deleting the workload.
 var rules = []rule{
 	{path: "deletion_protection", matches: isTrue, fix: "deletion_protection = false"},
-	{path: "deletion_policy", matches: isPrevent, fix: `deletion_policy = "DELETE"`},
+	// Bigtable spells the same field as an enum rather than a boolean.
+	{path: "deletion_protection", matches: equals("PROTECTED"), fix: `deletion_protection = "UNPROTECTED"`},
+	{path: "deletion_protection_enabled", matches: isTrue, fix: "deletion_protection_enabled = false"},
 	{path: "settings.deletion_protection_enabled", matches: isTrue, fix: "settings.deletion_protection_enabled = false"},
+	{path: "deletion_policy", matches: equals("PREVENT"), fix: `deletion_policy = "DELETE"`},
+	{path: "delete_protection_state", matches: equals("DELETE_PROTECTION_ENABLED"), fix: `delete_protection_state = "DELETE_PROTECTION_DISABLED"`},
+	{path: "delete_protection", matches: isTrue, fix: "delete_protection = false"},
+	{path: "enable_deletion_protection", matches: isTrue, fix: "enable_deletion_protection = false"},
 }
 
 func isTrue(v any) bool {
@@ -43,9 +61,11 @@ func isTrue(v any) bool {
 	return ok && b
 }
 
-func isPrevent(v any) bool {
-	s, ok := v.(string)
-	return ok && s == "PREVENT"
+func equals(want string) func(any) bool {
+	return func(v any) bool {
+		s, ok := v.(string)
+		return ok && s == want
+	}
 }
 
 func (*Check) Run(_ context.Context, in check.Input) ([]check.Finding, error) {
@@ -55,7 +75,7 @@ func (*Check) Run(_ context.Context, in check.Input) ([]check.Finding, error) {
 
 	var findings []check.Finding
 	for _, rc := range in.Plan.ResourceChanges {
-		if !rc.IsManaged() || !rc.Change.HasAction("delete") {
+		if !rc.IsManaged() || !isGoogleCloud(rc) || !rc.Change.HasAction("delete") {
 			continue
 		}
 		// Terraform deletes using the value already in state, so the protection
@@ -76,6 +96,13 @@ func (*Check) Run(_ context.Context, in check.Input) ([]check.Finding, error) {
 		}
 	}
 	return findings, nil
+}
+
+// The field names this check matches are not unique to Google Cloud, so without
+// this the check would report AWS and Azure resources the tool does not claim to
+// cover.
+func isGoogleCloud(rc plan.ResourceChange) bool {
+	return strings.HasPrefix(rc.Type, "google_")
 }
 
 func message(rc plan.ResourceChange, r rule) string {

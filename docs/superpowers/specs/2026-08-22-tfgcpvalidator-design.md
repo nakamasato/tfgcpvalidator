@@ -161,8 +161,25 @@ resource type が何であるかは問わない。これによりリスト保守
 | フィールド | 型 | 検知条件 |
 |---|---|---|
 | `deletion_protection` | bool | `true` |
-| `deletion_policy` | string | `"PREVENT"` |
+| `deletion_protection` | string | `"PROTECTED"` (Bigtable は enum で綴る) |
+| `deletion_protection_enabled` | bool | `true` |
 | `settings.deletion_protection_enabled` | bool (ネスト) | `true` |
+| `deletion_policy` | string | `"PREVENT"` |
+| `delete_protection_state` | string | `"DELETE_PROTECTION_ENABLED"` |
+| `delete_protection` | bool | `true` |
+| `enable_deletion_protection` | bool | `true` |
+
+この表は provider スキーマ (`terraform providers schema -json`) を全走査して導出した。
+google 6.44.0 から 7.41.0 の間に保護フィールドを持つ箇所は 48 から 868 に増えており、
+リソース型ではなくフィールド名で照合することが、まだ存在しないリソース型に追随する唯一の方法である。
+
+ネストしたパスは明示的に宣言し、探索はしない。
+`google_backup_dr_restore_workload` の
+`compute_instance_restore_properties.deletion_protection` を除外するためで、
+これは復元先インスタンスの属性であって、そのリソース自身の削除ガードではない。
+
+同じフィールド名は他クラウドの provider にも存在するため、
+`google_` で始まらない resource type は対象外とする。
 
 3 つ目は `google_sql_database_instance` の罠に対応する。このリソースには
 Terraform 側の `deletion_protection` と GCP API 側の `settings.deletion_protection_enabled` という
