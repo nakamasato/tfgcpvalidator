@@ -1,0 +1,104 @@
+name: tfgcpvalidator
+description: Catch Terraform failures on Google Cloud at plan time
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  plan:
+    description: Path to the output of `terraform show -json`
+    required: true
+  check:
+    description: Name of a single check to run. Leave empty to run every check.
+    required: false
+    default: ''
+  format:
+    description: 'Output format: text, markdown, github or json'
+    required: false
+    default: github
+  fail-on:
+    description: 'Exit non-zero when a finding reaches this severity: error, warn or never'
+    required: false
+    default: error
+  version:
+    description: Release tag to install, or `latest`
+    required: false
+    default: latest
+
+outputs:
+  findings:
+    description: All findings as JSON
+    value: ${{ steps.collect.outputs.findings }}
+  error-count:
+    description: Number of findings with severity error
+    value: ${{ steps.collect.outputs.error-count }}
+  warn-count:
+    description: Number of findings with severity warn
+    value: ${{ steps.collect.outputs.warn-count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install tfgcpvalidator
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        os=$(uname -s)
+        arch=$(uname -m)
+        case "$arch" in
+          x86_64) arch=amd64 ;;
+          aarch64) arch=arm64 ;;
+        esac
+        case "$os" in
+          Linux) os=linux ;;
+          Darwin) os=darwin ;;
+          *) echo "unsupported operating system: $os" >&2; exit 1 ;;
+        esac
+
+        base=https://github.com/nakamasato/tfgcpvalidator/releases
+        if [ "$VERSION" = "latest" ]; then
+          url="$base/latest/download/tfgcpvalidator_${os}_${arch}.tar.gz"
+        else
+          url="$base/download/${VERSION}/tfgcpvalidator_${os}_${arch}.tar.gz"
+        fi
+
+        dir="$RUNNER_TEMP/tfgcpvalidator"
+        mkdir -p "$dir"
+        curl -sSfL "$url" | tar -xz -C "$dir" tfgcpvalidator
+        echo "$dir" >> "$GITHUB_PATH"
+
+    - name: Collect findings
+      id: collect
+      shell: bash
+      env:
+        PLAN: ${{ inputs.plan }}
+        CHECK: ${{ inputs.check }}
+      run: |
+        set -euo pipefail
+        # --fail-on never keeps this step green so the outputs are always set,
+        # even when the report step is about to fail the job.
+        tfgcpvalidator validate ${CHECK:+"$CHECK"} \
+          --plan "$PLAN" --format json --fail-on never > findings.json
+
+        {
+          echo "findings<<TFGCPVALIDATOR_EOF"
+          cat findings.json
+          echo "TFGCPVALIDATOR_EOF"
+          echo "error-count=$(jq '.error_count' findings.json)"
+          echo "warn-count=$(jq '.warn_count' findings.json)"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Report
+      shell: bash
+      env:
+        PLAN: ${{ inputs.plan }}
+        CHECK: ${{ inputs.check }}
+        FORMAT: ${{ inputs.format }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        set -euo pipefail
+        tfgcpvalidator validate ${CHECK:+"$CHECK"} \
+          --plan "$PLAN" --format "$FORMAT" --fail-on "$FAIL_ON"
