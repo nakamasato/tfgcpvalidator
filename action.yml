@@ -1,0 +1,123 @@
+name: tfgcpvalidator
+description: Catch Terraform failures on Google Cloud at plan time
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  plan:
+    description: Path to the output of `terraform show -json`
+    required: true
+  check:
+    description: Name of a single check to run. Leave empty to run every check.
+    required: false
+    default: ''
+  format:
+    description: 'Output format: text, markdown, github or json'
+    required: false
+    default: github
+  fail-on:
+    description: 'Exit non-zero when a finding reaches this severity: error, warn or never'
+    required: false
+    default: error
+  version:
+    description: Release tag to install, or `latest`
+    required: false
+    default: latest
+
+outputs:
+  findings:
+    description: All findings as JSON
+    value: ${{ steps.collect.outputs.findings }}
+  error-count:
+    description: Number of findings with severity error
+    value: ${{ steps.collect.outputs.error-count }}
+  warn-count:
+    description: Number of findings with severity warn
+    value: ${{ steps.collect.outputs.warn-count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install tfgcpvalidator
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        os=$(uname -s)
+        arch=$(uname -m)
+        case "$arch" in
+          x86_64) arch=amd64 ;;
+          aarch64) arch=arm64 ;;
+        esac
+        case "$os" in
+          Linux) os=linux ;;
+          Darwin) os=darwin ;;
+          *) echo "unsupported operating system: $os" >&2; exit 1 ;;
+        esac
+
+        archive="tfgcpvalidator_${os}_${arch}.tar.gz"
+        base=https://github.com/nakamasato/tfgcpvalidator/releases
+        if [ "$VERSION" = "latest" ]; then
+          rel="$base/latest/download"
+        else
+          rel="$base/download/${VERSION}"
+        fi
+
+        dir="$RUNNER_TEMP/tfgcpvalidator"
+        mkdir -p "$dir"
+        curl -sSfL -o "$dir/$archive" "$rel/$archive"
+        curl -sSfL -o "$dir/checksums.txt" "$rel/checksums.txt"
+
+        # sha256sum resolves the filename on each checksums.txt line relative to
+        # the current directory, and the download must be verified before
+        # anything extracts it, so both files need to already be in $dir.
+        cd "$dir"
+        grep -E " ${archive}\$" checksums.txt | sha256sum -c -
+
+        tar -xz -C "$dir" -f "$dir/$archive" tfgcpvalidator
+        echo "$dir" >> "$GITHUB_PATH"
+
+    - name: Collect findings
+      id: collect
+      shell: bash
+      env:
+        PLAN: ${{ inputs.plan }}
+        CHECK: ${{ inputs.check }}
+      run: |
+        set -euo pipefail
+        # Composite steps run in the caller's checkout, so the findings file
+        # goes under $RUNNER_TEMP rather than $GITHUB_WORKSPACE to avoid
+        # dropping an untracked file into the user's working tree.
+        findings="$RUNNER_TEMP/tfgcpvalidator-findings.json"
+
+        # --fail-on never keeps this step green so the outputs are always set,
+        # even when the report step is about to fail the job.
+        tfgcpvalidator validate ${CHECK:+"$CHECK"} \
+          --plan "$PLAN" --format json --fail-on never > "$findings"
+
+        # The findings JSON embeds plan-controlled strings (resource addresses,
+        # messages), so a fixed heredoc delimiter could be spoofed to inject
+        # extra $GITHUB_OUTPUT lines; a per-run random delimiter closes that.
+        delimiter="TFGCPVALIDATOR_EOF_$(openssl rand -hex 16)"
+        {
+          echo "findings<<$delimiter"
+          cat "$findings"
+          echo "$delimiter"
+          echo "error-count=$(jq '.error_count' "$findings")"
+          echo "warn-count=$(jq '.warn_count' "$findings")"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Report
+      shell: bash
+      env:
+        PLAN: ${{ inputs.plan }}
+        CHECK: ${{ inputs.check }}
+        FORMAT: ${{ inputs.format }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        set -euo pipefail
+        tfgcpvalidator validate ${CHECK:+"$CHECK"} \
+          --plan "$PLAN" --format "$FORMAT" --fail-on "$FAIL_ON"

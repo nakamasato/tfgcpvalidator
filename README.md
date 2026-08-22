@@ -2,7 +2,8 @@
 
 Catch Terraform failures on Google Cloud at plan time, before `apply` breaks something.
 
-> Status: early design. Not yet usable.
+> Status: preview. Until `v1`, any release may contain breaking changes — to the
+> flags, the output format, or the action inputs.
 
 ## The problem
 
@@ -50,8 +51,69 @@ No maintained tool addresses `deletion_protection` and destroy directly.
 
 v1 covers destroys:
 
-- A resource is being destroyed while `deletion_protection = true` or `deletion_policy = "PREVENT"` is still set — **error**, because the apply is guaranteed to fail.
+- A resource is being destroyed while a deletion-protection field is still set — **error**, because the apply is guaranteed to fail.
 - A resource is being replaced, since a replace deletes before it creates and fails the same way — **error**.
+
+The fields it matches, and the value that blocks a delete:
+
+| Field | Blocking value |
+| --- | --- |
+| `deletion_protection` | `true`, or `"PROTECTED"` where the provider spells it as an enum |
+| `deletion_protection_enabled` | `true` |
+| `settings.deletion_protection_enabled` | `true` |
+| `deletion_policy` | `"PREVENT"` |
+| `delete_protection_state` | `"DELETE_PROTECTION_ENABLED"` |
+| `delete_protection` | `true` |
+| `enable_deletion_protection` | `true` |
+
+These are field names, not a list of resource types, so a resource type that
+gains deletion protection in a future provider release is covered without a
+change here. Resource types outside Google Cloud are skipped: the same field
+names appear on other providers, and this tool does not claim to cover them.
+
+## Usage
+
+### GitHub Actions
+
+```yaml
+- run: terraform plan -out tfplan.binary
+- run: terraform show -json tfplan.binary > tfplan.json
+
+- uses: nakamasato/tfgcpvalidator@v0
+  with:
+    plan: tfplan.json
+```
+
+The action fails the job when a finding reaches the `fail-on` severity, which
+defaults to `error`, and annotates the run with every finding.
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `plan` | *required* | Path to the output of `terraform show -json` |
+| `check` | every check | Name of a single check to run |
+| `format` | `github` | `text`, `markdown`, `github` or `json` |
+| `fail-on` | `error` | `error`, `warn` or `never` |
+| `version` | `latest` | Release tag to install |
+
+Outputs: `findings` (JSON), `error-count`, `warn-count`.
+
+### CLI
+
+```bash
+go install github.com/nakamasato/tfgcpvalidator/cmd/tfgcpvalidator@latest
+
+terraform plan -out tfplan.binary
+terraform show -json tfplan.binary > tfplan.json
+
+tfgcpvalidator validate --plan tfplan.json          # every check
+tfgcpvalidator validate destroy --plan tfplan.json  # one check
+```
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | No finding reached the `--fail-on` severity |
+| `1` | A finding reached it |
+| `2` | The tool itself failed, for example an unreadable plan |
 
 ## Where this is going
 

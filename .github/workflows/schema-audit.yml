@@ -1,0 +1,68 @@
+name: schema-audit
+
+on:
+  schedule:
+    # Weekly is enough: the audit watches for new provider releases, and a field
+    # this tool misses is a gap to close, not an outage to page on.
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      provider-version:
+        description: Provider version to audit
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Resolve the provider version to audit
+        id: version
+        env:
+          REQUESTED: ${{ inputs.provider-version }}
+        run: |
+          set -euo pipefail
+          version="$REQUESTED"
+          if [ -z "$version" ]; then
+            version=$(curl -sSfL https://api.github.com/repos/hashicorp/terraform-provider-google/releases/latest \
+              | grep '"tag_name"' | head -1 | sed -E 's/.*"v?([^"]+)".*/\1/')
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "auditing hashicorp/google $version"
+
+      - name: Fetch the provider schema
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/schema"
+          mkdir -p "$dir"
+          cat > "$dir/versions.tf" <<TF
+          terraform {
+            required_providers {
+              google = {
+                source  = "hashicorp/google"
+                version = "$VERSION"
+              }
+            }
+          }
+          TF
+          terraform -chdir="$dir" init -backend=false -input=false
+          terraform -chdir="$dir" providers schema -json > "$RUNNER_TEMP/schema.json"
+
+      - name: Audit the rule table
+        run: go run ./tools/schemaaudit -schema "$RUNNER_TEMP/schema.json" -audit
