@@ -7,6 +7,7 @@
       "mode": "managed",
       "type": "google_sql_database_instance",
       "name": "main",
+      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete"
@@ -27,6 +28,7 @@
       "mode": "managed",
       "type": "google_bigquery_table",
       "name": "events",
+      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete"
@@ -42,6 +44,7 @@
       "mode": "managed",
       "type": "google_container_cluster",
       "name": "primary",
+      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete",
@@ -58,6 +61,7 @@
       "mode": "managed",
       "type": "google_project",
       "name": "sandbox",
+      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete"
@@ -73,6 +77,7 @@
       "mode": "managed",
       "type": "google_storage_bucket",
       "name": "assets",
+      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "delete"
@@ -86,6 +91,7 @@
       "mode": "managed",
       "type": "google_compute_instance",
       "name": "worker",
+      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "create"
@@ -101,6 +107,7 @@
       "mode": "data",
       "type": "google_project",
       "name": "current",
+      "provider_name": "registry.terraform.io/hashicorp/google",
       "change": {
         "actions": [
           "read"
@@ -111,5 +118,14 @@
         "after": {}
       }
     }
-  ]
+  ],
+  "configuration": {
+    "provider_config": {
+      "google": {
+        "name": "google",
+        "full_name": "registry.terraform.io/hashicorp/google",
+        "version_constraint": "7.41.0"
+      }
+    }
+  }
 }
