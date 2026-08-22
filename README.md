@@ -2,9 +2,8 @@
 
 Catch Terraform failures on Google Cloud at plan time, before `apply` breaks something.
 
-> Status: preview. The checks are tested and the interface works, but nothing has
-> run this against production infrastructure yet. Expect the flags and output to
-> move before v1.
+> Status: preview. Until `v1`, any release may contain breaking changes — to the
+> flags, the output format, or the action inputs.
 
 ## The problem
 
