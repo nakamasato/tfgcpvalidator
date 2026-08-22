@@ -300,9 +300,21 @@ CLI レベルでは exit code (0 / 1 / 2) と各 format の出力を検証する
 
 ## 9. リリース
 
-goreleaser で linux/darwin × amd64/arm64 のバイナリをビルドし GitHub Release に配置する。
-タグは semver。0.x のうちは互換性を約束しない。
-Action 利用者向けに `v0` の移動タグを維持する。
+リリースは release-please と goreleaser で分担する。バージョンを決めるのは
+release-please、成果物を作るのは goreleaser であり、役割は重ならない。
+
+1. main への conventional commit から release-please が Release PR を維持する
+2. その PR をマージすると release-please がタグと GitHub Release を作る
+3. Release の published を受けて goreleaser が linux/darwin × amd64/arm64 の
+   バイナリと `checksums.txt` を**既存の Release に追加**する (`release: mode: append`)
+4. 同じワークフローが `v0` の移動タグを最新のリリースへ付け替える
+
+4 が必要なのは、release-please も goreleaser も `v0.1.0` のような具体的なタグしか
+作らないためである。Action 利用者は `uses: nakamasato/tfgcpvalidator@v0` で参照するので、
+誰かが `v0` を動かさない限りその参照は壊れたままになる。
+
+タグは semver。0.x のうちは互換性を約束せず、破壊的変更も minor で上げる
+(`bump-minor-pre-major`)。
 
 ## 10. 今後
 

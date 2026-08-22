@@ -26,5 +26,10 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# release-please owns the release and its notes, so goreleaser only attaches
+# artifacts to what already exists.
+release:
+  mode: append
+
 changelog:
-  use: github
+  disable: true
