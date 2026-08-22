@@ -1,4 +1,4 @@
-name: release-please
+name: release
 
 on:
   push:
@@ -13,11 +13,60 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      released: ${{ steps.release.outputs.releases_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+      major: ${{ steps.release.outputs.major }}
     steps:
       # Maintains a release pull request from the conventional commits on main.
-      # Merging it is what cuts a version: this action then tags it and
-      # publishes the release, which is what release.yml waits for.
+      # Merging it is what cuts a version: this step then tags it and publishes
+      # the release, and the job below fills that release in.
       - uses: googleapis/release-please-action@v5
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # This has to live in the same workflow run as the release. A release created
+  # with GITHUB_TOKEN emits no `release: published` event, so a workflow keyed on
+  # that event would never fire and the binaries would never be attached.
+  artifacts:
+    needs: release-please
+    if: needs.release-please.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      # release-please already created the release, so goreleaser appends the
+      # binaries to it rather than creating one of its own.
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Point the major tag at this release
+        env:
+          TAG: ${{ needs.release-please.outputs.tag }}
+          MAJOR: ${{ needs.release-please.outputs.major }}
+        run: |
+          set -euo pipefail
+          # Action users pin `uses: nakamasato/tfgcpvalidator@v0`, which nothing
+          # else moves: release-please only ever creates the exact version tag.
+          case "$MAJOR" in
+            ''|*[!0-9]*) echo "unexpected major version: '$MAJOR'" >&2; exit 1 ;;
+          esac
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "v$MAJOR" "$TAG"
+          git push -f origin "refs/tags/v$MAJOR"
+          echo "moved v$MAJOR to $TAG"
