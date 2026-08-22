@@ -310,11 +310,15 @@ release-please、成果物を作るのは goreleaser であり、役割は重な
    **既存の Release に追加**する (`release: mode: append`)
 4. 同じ job が `v0` の移動タグを最新のリリースへ付け替える
 
-3 を別ワークフローに分けてはならない。`GITHUB_TOKEN` による操作は
-`workflow_dispatch` と `repository_dispatch` を除き新しいワークフロー実行を
-起こさないため、`on: release: published` を起点にすると **release-please が作った
-Release では発火せず、バイナリが永久に添付されない**。同一実行内に置くことで
-この制約を回避する。
+release-please は GitHub App のトークンで動かす。`GITHUB_TOKEN` はリポジトリ設定で
+明示的に許可しない限り PR を作成できず、また `GITHUB_TOKEN` による操作はイベントを
+起こさないため Release PR に CI が走らない。App トークンはどちらの制約も受けない。
+
+3 は同一ワークフロー実行内に置き、`on: release: published` を起点にしない。
+`GITHUB_TOKEN` による操作は `workflow_dispatch` と `repository_dispatch` を除き
+新しいワークフロー実行を起こさないため、その形にすると **トークンを App から
+`GITHUB_TOKEN` に戻した日に、バイナリの添付が黙って止まる**。同一実行内なら
+どのトークンで動かしても成立する。
 
 4 が必要なのは、release-please も goreleaser も `v0.1.0` のような具体的なタグしか
 作らないためである。Action 利用者は `uses: nakamasato/tfgcpvalidator@v0` で参照するので、
