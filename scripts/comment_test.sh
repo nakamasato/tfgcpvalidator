@@ -13,6 +13,12 @@ cat >"$work/bin/gh" <<'STUB'
 set -euo pipefail
 printf '%s\n' "$*" >>"$GH_CALLS"
 
+# Exiting without draining the body would send SIGPIPE to the jq that writes
+# it, which pipefail then reports as a failed call.
+case "$*" in
+  *"--input -"*) cat >/dev/null ;;
+esac
+
 if [ "${GH_FAIL:-}" = 1 ]; then
   echo "stub: forced failure" >&2
   exit 1
@@ -60,6 +66,15 @@ run() {
 
   local calls
   calls=$(cat "$GH_CALLS")
+
+  # A failure inside the script degrades to a warning and still exits 0, so
+  # without this a broken case would look like a passing one.
+  if [ "${WANT_WARN:-0}" = 0 ] && grep -q '::warning' <<<"$out"; then
+    echo "FAIL $name: warned unexpectedly"
+    echo "  output: $out"
+    failures=$((failures + 1))
+    return
+  fi
 
   if [ "$status" -ne "${WANT_STATUS:-0}" ]; then
     echo "FAIL $name: exit $status, want ${WANT_STATUS:-0}"
@@ -121,10 +136,10 @@ COMMENT=false LABEL='needs fix' FINDINGS="$work/none.json" \
 
 COMMENT=false LABEL='' run "nothing to do exits early" '!api'
 
-GH_FAIL=1 WANT_STATUS=0 run "an API failure warns instead of failing the job" \
+GH_FAIL=1 WANT_WARN=1 run "an API failure warns instead of failing the job" \
   'issues/7/comments'
 
-TEST_EVENT=/nonexistent WANT_STATUS=0 run "an event without a pull request is skipped" '!api'
+TEST_EVENT=/nonexistent WANT_WARN=1 run "an event without a pull request is skipped" '!api'
 
 COMMENT=bogus WANT_STATUS=2 run "an invalid comment input is rejected" '!api'
 
