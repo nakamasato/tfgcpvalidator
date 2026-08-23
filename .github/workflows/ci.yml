@@ -56,8 +56,9 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # version: none below picks this up, so the comment on this pull request
-      # shows what the branch renders rather than what the last release did.
+      # The action uses a tfgcpvalidator already on PATH in preference to
+      # downloading a release, so the comment on this pull request shows what
+      # the branch renders rather than what the last release did.
       - name: Build the binary under test
         run: |
           set -euo pipefail
@@ -71,7 +72,6 @@ jobs:
         with:
           plan: internal/check/destroy/testdata/schema_shaped_plan.json
           fail-on: never
-          version: none
 
       - name: Check the outputs
         env:
