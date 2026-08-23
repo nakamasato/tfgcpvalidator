@@ -37,9 +37,16 @@ find_comment() {
 }
 
 build_body() {
+  # The heading carries the outcome, because a reader skimming the pull request
+  # has nothing else to tell them this run found something that fails an apply.
+  local icon='⚠️'
+  if [ "$(jq '.error_count' "$FINDINGS")" -gt 0 ]; then
+    icon='❌'
+  fi
+
   local body
   body="$MARKER
-## GCP Validation$TITLE_SUFFIX
+## $icon GCP Validation$TITLE_SUFFIX
 
 $(cat "$MARKDOWN")"
 

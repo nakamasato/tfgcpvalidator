@@ -45,6 +45,7 @@ cat >"$work/event.json" <<'JSON'
 JSON
 
 printf '%s\n' '{"findings":[{"address":"a"}],"error_count":1,"warn_count":0}' >"$work/some.json"
+printf '%s\n' '{"findings":[{"address":"a"}],"error_count":0,"warn_count":1}' >"$work/warn.json"
 printf '%s\n' '{"findings":[],"error_count":0,"warn_count":0}' >"$work/none.json"
 printf '%s\n' '| Severity | Resource |' >"$work/report.md"
 
@@ -114,7 +115,7 @@ run "auto on push does nothing" '!api'
 
 export GITHUB_EVENT_NAME=pull_request
 run "findings with no existing comment post one" \
-  '--method POST repos/o/r/issues/7/comments' '## GCP Validation' '!PATCH'
+  '--method POST repos/o/r/issues/7/comments' '## ❌ GCP Validation' '!PATCH'
 
 GH_EXISTING=1 run "findings with an existing comment update it" \
   '--method PATCH repos/o/r/issues/comments/42' 'isMinimized' '!unminimizeComment'
@@ -131,10 +132,13 @@ FINDINGS="$work/none.json" GH_EXISTING=1 GH_MINIMIZED=true \
 FINDINGS="$work/none.json" run "no findings and no comment write nothing" \
   '!minimizeComment' '!--method'
 
+FINDINGS="$work/warn.json" run "warnings alone are not marked as a failure" \
+  '## ⚠️ GCP Validation' '!❌'
+
 COMMENT=false run "a disabled comment exits early" '!api'
 
 TARGET=dev run "a target scopes the comment to itself" \
-  '<!-- tfgcpvalidator:dev -->' '## GCP Validation (dev)'
+  '<!-- tfgcpvalidator:dev -->' 'GCP Validation (dev)'
 
 TARGET=dev GH_EXISTING=1 GH_MARKER='<!-- tfgcpvalidator -->' \
   run "a target ignores an untargeted comment" \
