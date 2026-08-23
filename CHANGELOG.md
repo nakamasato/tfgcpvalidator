@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/nakamasato/tfgcpvalidator/compare/v0.1.2...v0.2.0) (2026-08-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* install the version the action ref points at, and split the rationale into docs/ ([#9](https://github.com/nakamasato/tfgcpvalidator/issues/9))
+
+### Features
+
+* install the version the action ref points at, and split the rationale into docs/ ([#9](https://github.com/nakamasato/tfgcpvalidator/issues/9)) ([2b0f203](https://github.com/nakamasato/tfgcpvalidator/commit/2b0f2039b44716b569258cbfbda21e3e359d6744))
+
 ## [0.1.2](https://github.com/nakamasato/tfgcpvalidator/compare/v0.1.1...v0.1.2) (2026-08-23)
 
 
