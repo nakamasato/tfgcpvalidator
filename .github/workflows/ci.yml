@@ -52,11 +52,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      # version: none below picks this up, so the comment on this pull request
+      # shows what the branch renders rather than what the last release did.
+      - name: Build the binary under test
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/bin"
+          mkdir -p "$dir"
+          go build -o "$dir/tfgcpvalidator" ./cmd/tfgcpvalidator
+          echo "$dir" >> "$GITHUB_PATH"
+
       - id: validate
         uses: ./
         with:
           plan: internal/check/destroy/testdata/schema_shaped_plan.json
           fail-on: never
+          version: none
 
       - name: Check the outputs
         env:

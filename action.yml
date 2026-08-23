@@ -37,7 +37,9 @@ inputs:
     required: false
     default: ${{ github.token }}
   version:
-    description: Release tag to install, or `latest`
+    description: >-
+      Release tag to install, `latest`, or `none` to use the tfgcpvalidator
+      already on PATH
     required: false
     default: latest
 
@@ -61,6 +63,16 @@ runs:
         VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
+
+        # `none` hands the choice of binary to the caller, which is what lets a
+        # pull request run the action against a build of itself.
+        if [ "$VERSION" = "none" ]; then
+          if ! command -v tfgcpvalidator >/dev/null 2>&1; then
+            echo "version: none expects tfgcpvalidator on PATH, but there is none" >&2
+            exit 1
+          fi
+          exit 0
+        fi
 
         os=$(uname -s)
         arch=$(uname -m)

@@ -100,7 +100,7 @@ left behind. A clean run never posts anything.
 | `comment` | `auto` | Post the comment: `auto` for pull request events only, or `true` or `false` |
 | `target` | none | Name separating this call's comment from another's on the same pull request |
 | `github-token` | `${{ github.token }}` | Token used for the comment |
-| `version` | `latest` | Release tag to install |
+| `version` | `latest` | Release tag to install, or `none` to use the `tfgcpvalidator` already on PATH |
 
 Outputs: `findings` (JSON), `error-count`, `warn-count`.
 
