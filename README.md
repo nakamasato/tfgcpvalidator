@@ -7,11 +7,12 @@ Catch Terraform failures on Google Cloud at plan time, before `apply` breaks som
 
 ## Why
 
-`terraform plan` does not verify that a resource is actually deletable. Google
-Cloud's `deletion_protection` is enforced by the API, so the check only happens
-during `apply`: the pull request plan is green, and the apply fails after the
-merge with `Error, failed to delete instance because deletion_protection is set
-to true`.
+`terraform plan` does not verify that a resource is actually deletable. Deletion
+protection is only tested once `apply` runs — by the provider for the flags it
+enforces itself, by the Google Cloud API for the ones stored on the resource.
+Either way the pull request plan is green, and the apply fails after the merge
+with `Error, failed to delete instance because deletion_protection is set to
+true`.
 
 That is worse than a plain failed apply. Terraform destroys in dependency order,
 so deleting a `google_sql_database_instance` removes its databases and users

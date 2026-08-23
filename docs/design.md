@@ -9,9 +9,11 @@ A standard Terraform pipeline assumes that `terraform plan` is an accurate
 preview of `terraform apply`. On Google Cloud, `deletion_protection` breaks that
 assumption.
 
-The check is enforced by the Google Cloud API, which means it only happens
-during `apply`. `terraform plan` never verifies that a resource is actually
-deletable. So:
+The check runs during `apply` — the provider enforces some of these flags
+itself, the Google Cloud API enforces the rest ([the difference, and why it
+matters](architecture.md#two-kinds-of-deletion-protection)). Neither is
+consulted at plan time, so `terraform plan` never verifies that a resource is
+actually deletable. So:
 
 1. The pull request plan is green, and reviewers approve it.
 2. `apply` fails after the merge with `Error, failed to delete instance because deletion_protection is set to true`.
