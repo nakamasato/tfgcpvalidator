@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+    # labeled is here so that applying test-action to an open pull request
+    # reruns the action job, which is what posts the comment.
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   contents: read
@@ -56,8 +59,9 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # version: none below picks this up, so the comment on this pull request
-      # shows what the branch renders rather than what the last release did.
+      # The action uses a tfgcpvalidator already on PATH in preference to
+      # downloading a release, so the comment on this pull request shows what
+      # the branch renders rather than what the last release did.
       - name: Build the binary under test
         run: |
           set -euo pipefail
@@ -71,7 +75,10 @@ jobs:
         with:
           plan: internal/check/destroy/testdata/schema_shaped_plan.json
           fail-on: never
-          version: none
+          # The comment lands on this pull request for real, so it is opt-in per
+          # pull request: label one test-action to see what the branch renders.
+          # Everything else about the action is exercised either way.
+          comment: ${{ contains(github.event.pull_request.labels.*.name, 'test-action') }}
 
       - name: Check the outputs
         env:

@@ -36,12 +36,6 @@ inputs:
     description: Token used to write the comment
     required: false
     default: ${{ github.token }}
-  version:
-    description: >-
-      Release tag to install, `latest`, or `none` to use the tfgcpvalidator
-      already on PATH
-    required: false
-    default: latest
 
 outputs:
   findings:
@@ -59,20 +53,22 @@ runs:
   steps:
     - name: Install tfgcpvalidator
       shell: bash
-      env:
-        VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
 
-        # `none` hands the choice of binary to the caller, which is what lets a
-        # pull request run the action against a build of itself.
-        if [ "$VERSION" = "none" ]; then
-          if ! command -v tfgcpvalidator >/dev/null 2>&1; then
-            echo "version: none expects tfgcpvalidator on PATH, but there is none" >&2
-            exit 1
-          fi
+        # A tfgcpvalidator already on PATH is a deliberate choice by the caller
+        # — this repository's own CI puts a build of the branch there — so it
+        # wins over the release this step would otherwise download.
+        if command -v tfgcpvalidator >/dev/null 2>&1; then
+          echo "using the tfgcpvalidator already on PATH: $(command -v tfgcpvalidator)"
           exit 0
         fi
+
+        # The binary has to match the action code the caller pinned, so the
+        # version is read from the checkout of that ref rather than asked for:
+        # release-please bumps this manifest in the commit it tags, and the
+        # major tag moves onto that same commit.
+        version=$(jq -er '."."' "$GITHUB_ACTION_PATH/.release-please-manifest.json")
 
         os=$(uname -s)
         arch=$(uname -m)
@@ -87,12 +83,7 @@ runs:
         esac
 
         archive="tfgcpvalidator_${os}_${arch}.tar.gz"
-        base=https://github.com/nakamasato/tfgcpvalidator/releases
-        if [ "$VERSION" = "latest" ]; then
-          rel="$base/latest/download"
-        else
-          rel="$base/download/${VERSION}"
-        fi
+        rel="https://github.com/nakamasato/tfgcpvalidator/releases/download/v${version}"
 
         dir="$RUNNER_TEMP/tfgcpvalidator"
         mkdir -p "$dir"
