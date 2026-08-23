@@ -20,14 +20,14 @@ func (markdownReporter) Report(w io.Writer, findings []check.Finding) error {
 	errCount, warnCount := check.Counts(findings)
 	fmt.Fprintf(&b, "**%s**, %s\n\n", pluralize(errCount, "error"), pluralize(warnCount, "warning"))
 
-	// One line per finding, with the remediation folded away: the remediations
-	// are long and largely identical, and they were burying the addresses.
+	// One line per finding plus one for the fix: a table gave the remediation a
+	// column of its own, and the repeated prose in it buried the addresses.
 	for _, f := range findings {
-		fmt.Fprintf(&b, "%s %s — %s\n", icon(f.Severity), codeSpan(oneLine(f.Address)), oneLine(f.Message))
-		if f.Remediation != "" {
-			// The blank line after <summary> is what lets GitHub render the
-			// body as markdown rather than as literal text.
-			fmt.Fprintf(&b, "<details><summary>Fix</summary>\n\n%s\n</details>\n", oneLine(f.Remediation))
+		// The two trailing spaces are a markdown hard break, which keeps the fix
+		// on its own line without opening a second paragraph.
+		fmt.Fprintf(&b, "%s %s — %s  \n", icon(f.Severity), codeSpan(oneLine(f.Address)), oneLine(f.Message))
+		if f.Fix != "" {
+			fmt.Fprintf(&b, "Fix: set %s and %s.\n", codeSpan(f.Fix), oneLine(f.Remediation))
 		}
 		b.WriteString("\n")
 	}

@@ -17,8 +17,8 @@ func (githubReporter) Report(w io.Writer, findings []check.Finding) error {
 			level = "warning"
 		}
 		body := f.Message
-		if f.Remediation != "" {
-			body += " " + f.Remediation
+		if f.Fix != "" {
+			body += fmt.Sprintf(" Fix: set %s and %s.", f.Fix, f.Remediation)
 		}
 		if _, err := fmt.Fprintf(w, "::%s title=tfgcpvalidator/%s::%s: %s\n",
 			level, f.Check, escapeCommand(f.Address), escapeCommand(body)); err != nil {

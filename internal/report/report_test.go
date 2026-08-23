@@ -16,7 +16,8 @@ var sample = []check.Finding{
 		Address:     "google_sql_database_instance.main",
 		Type:        "google_sql_database_instance",
 		Message:     "deletion_protection is set and this resource is being destroyed. The apply will fail.",
-		Remediation: "Apply deletion_protection = false on its own first.",
+		Fix:         "deletion_protection = false",
+		Remediation: "apply it before this change",
 	},
 }
 
@@ -49,7 +50,7 @@ func TestFormats(t *testing.T) {
 
 func TestTextIncludesEverything(t *testing.T) {
 	got := render(t, "text", sample)
-	for _, want := range []string{"ERROR", "google_sql_database_instance.main", "deletion_protection is set", "Apply deletion_protection = false"} {
+	for _, want := range []string{"ERROR", "google_sql_database_instance.main", "deletion_protection is set", "set deletion_protection = false", "before this change"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("text output missing %q:\n%s", want, got)
 		}
@@ -98,17 +99,14 @@ func TestMarkdownIsOneLinePerFinding(t *testing.T) {
 	}
 }
 
-func TestMarkdownFoldsTheRemediation(t *testing.T) {
+func TestMarkdownPutsTheFixOnItsOwnLine(t *testing.T) {
 	got := render(t, "markdown", sample)
-	if !strings.Contains(got, "<details><summary>Fix</summary>") {
-		t.Errorf("the remediation must be folded away:\n%s", got)
+	if !strings.Contains(got, "Fix: set `deletion_protection = false` and apply it before this change.") {
+		t.Errorf("markdown output missing the fix:\n%s", got)
 	}
-	if !strings.Contains(got, sample[0].Remediation) {
-		t.Errorf("markdown output missing the remediation:\n%s", got)
-	}
-	// Without the blank line GitHub renders the body as literal text.
-	if !strings.Contains(got, "<summary>Fix</summary>\n\n") {
-		t.Errorf("the folded body needs a blank line before it:\n%s", got)
+	// Without the hard break the fix joins the end of the finding's line.
+	if !strings.Contains(got, "The apply will fail.  \nFix:") {
+		t.Errorf("the fix needs a hard break before it:\n%s", got)
 	}
 }
 
@@ -177,6 +175,7 @@ func TestMarkdownEscapesAddress(t *testing.T) {
 		Check:       "destroy",
 		Address:     "google_storage_bucket.b[\"a|b`c\"]",
 		Message:     "deletion_protection is set",
+		Fix:         "deletion_protection = false",
 		Remediation: "fix it",
 	}}
 	got := render(t, "markdown", findings)

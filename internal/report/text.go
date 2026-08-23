@@ -20,8 +20,8 @@ func (textReporter) Report(w io.Writer, findings []check.Finding) error {
 	for _, f := range findings {
 		fmt.Fprintf(&b, "%s  %s\n", strings.ToUpper(f.Severity.String()), f.Address)
 		fmt.Fprintf(&b, "  %s\n", f.Message)
-		if f.Remediation != "" {
-			fmt.Fprintf(&b, "  fix: %s\n", f.Remediation)
+		if f.Fix != "" {
+			fmt.Fprintf(&b, "  fix: set %s and %s\n", f.Fix, f.Remediation)
 		}
 		b.WriteString("\n")
 	}
