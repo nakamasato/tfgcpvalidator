@@ -126,15 +126,14 @@ func TestDeleteMessageDoesNotMentionReplace(t *testing.T) {
 	}
 }
 
-func TestRemediationDescribesTwoApplies(t *testing.T) {
+func TestFixNamesTheChangeAndWhenToApplyIt(t *testing.T) {
 	findings := run(t, managed("google_x.a", "google_x",
 		change([]string{"delete"}, map[string]any{"deletion_protection": true})))
-	got := findings[0].Remediation
-	if !strings.Contains(got, "deletion_protection = false") {
-		t.Errorf("Remediation = %q, want the exact field change", got)
+	if got := findings[0].Fix; got != "deletion_protection = false" {
+		t.Errorf("Fix = %q, want the exact field change", got)
 	}
-	if !strings.Contains(got, "single apply") {
-		t.Errorf("Remediation = %q, want it to explain that one apply is not enough", got)
+	if got := findings[0].Remediation; !strings.Contains(got, "before this change") {
+		t.Errorf("Remediation = %q, want it to say the fix has to land first", got)
 	}
 }
 
@@ -228,7 +227,7 @@ func TestNestedRestorePropertyIsNotAProtection(t *testing.T) {
 	}
 }
 
-func TestRemediationNamesTheFieldsOwnFixValue(t *testing.T) {
+func TestFixUsesTheFieldsOwnClearingValue(t *testing.T) {
 	tests := []struct {
 		name   string
 		before map[string]any
@@ -244,8 +243,8 @@ func TestRemediationNamesTheFieldsOwnFixValue(t *testing.T) {
 			if len(findings) != 1 {
 				t.Fatalf("len(findings) = %d, want 1", len(findings))
 			}
-			if !strings.Contains(findings[0].Remediation, tt.want) {
-				t.Errorf("Remediation = %q, want it to name %q", findings[0].Remediation, tt.want)
+			if findings[0].Fix != tt.want {
+				t.Errorf("Fix = %q, want %q", findings[0].Fix, tt.want)
 			}
 		})
 	}

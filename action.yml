@@ -26,18 +26,20 @@ inputs:
       events only, or `true` or `false`
     required: false
     default: auto
-  label:
+  target:
     description: >-
-      Label to add while there are findings and remove once there are none.
-      Leave empty to leave labels alone.
+      Name distinguishing this call's comment from another's on the same pull
+      request, for example one per environment in a matrix
     required: false
     default: ''
   github-token:
-    description: Token used to write the comment and the label
+    description: Token used to write the comment
     required: false
     default: ${{ github.token }}
   version:
-    description: Release tag to install, or `latest`
+    description: >-
+      Release tag to install, `latest`, or `none` to use the tfgcpvalidator
+      already on PATH
     required: false
     default: latest
 
@@ -61,6 +63,16 @@ runs:
         VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
+
+        # `none` hands the choice of binary to the caller, which is what lets a
+        # pull request run the action against a build of itself.
+        if [ "$VERSION" = "none" ]; then
+          if ! command -v tfgcpvalidator >/dev/null 2>&1; then
+            echo "version: none expects tfgcpvalidator on PATH, but there is none" >&2
+            exit 1
+          fi
+          exit 0
+        fi
 
         os=$(uname -s)
         arch=$(uname -m)
@@ -131,11 +143,11 @@ runs:
 
     # Runs before Report because Report is what fails the job, and a skipped
     # step would leave the pull request without the findings it just failed on.
-    - name: Comment and label
+    - name: Comment
       shell: bash
       env:
         COMMENT: ${{ inputs.comment }}
-        LABEL: ${{ inputs.label }}
+        TARGET: ${{ inputs.target }}
         GH_TOKEN: ${{ inputs.github-token }}
         FINDINGS: ${{ runner.temp }}/tfgcpvalidator-findings.json
         MARKDOWN: ${{ runner.temp }}/tfgcpvalidator-findings.md

@@ -32,12 +32,14 @@ func (s Severity) String() string {
 func (s Severity) MarshalJSON() ([]byte, error) { return json.Marshal(s.String()) }
 
 type Finding struct {
-	Check       string   `json:"check"`
-	Severity    Severity `json:"severity"`
-	Address     string   `json:"address"`
-	Type        string   `json:"type"`
-	Message     string   `json:"message"`
-	Remediation string   `json:"remediation"`
+	Check    string   `json:"check"`
+	Severity Severity `json:"severity"`
+	Address  string   `json:"address"`
+	Type     string   `json:"type"`
+	Message  string   `json:"message"`
+	// Fix is the change to apply, as HCL, so a reporter can render it as code.
+	Fix         string `json:"fix,omitempty"`
+	Remediation string `json:"remediation"`
 }
 
 type Input struct {

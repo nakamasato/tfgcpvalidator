@@ -92,7 +92,8 @@ func (*Check) Run(_ context.Context, in check.Input) ([]check.Finding, error) {
 				Address:     rc.Address,
 				Type:        rc.Type,
 				Message:     message(rc, r),
-				Remediation: remediation(r),
+				Fix:         r.fix,
+				Remediation: remediation,
 			})
 		}
 	}
@@ -113,9 +114,9 @@ func message(rc plan.ResourceChange, r rule) string {
 	return fmt.Sprintf("%s is set and this resource is being destroyed. The apply will fail.", r.path)
 }
 
-func remediation(r rule) string {
-	return fmt.Sprintf("Apply %s on its own first, then apply the removal. Terraform deletes with the value already in state, so both changes cannot land in a single apply.", r.fix)
-}
+// Terraform deletes with the value already in state, so clearing the protection
+// and removing the resource cannot land in a single apply.
+const remediation = "apply it before this change"
 
 // RulePaths returns the field paths this check matches, so the schema audit can
 // tell which of the provider's protection fields are already covered.

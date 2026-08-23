@@ -98,13 +98,13 @@ left behind. A clean run never posts anything.
 | `format` | `github` | `text`, `markdown`, `github` or `json` |
 | `fail-on` | `error` | `error`, `warn` or `never` |
 | `comment` | `auto` | Post the comment: `auto` for pull request events only, or `true` or `false` |
-| `label` | none | Label to add while there are findings and remove once there are none |
-| `github-token` | `${{ github.token }}` | Token used for the comment and the label |
-| `version` | `latest` | Release tag to install |
+| `target` | none | Name separating this call's comment from another's on the same pull request |
+| `github-token` | `${{ github.token }}` | Token used for the comment |
+| `version` | `latest` | Release tag to install, or `none` to use the `tfgcpvalidator` already on PATH |
 
 Outputs: `findings` (JSON), `error-count`, `warn-count`.
 
-The comment and the label need `pull-requests: write`:
+The comment needs `pull-requests: write`:
 
 ```yaml
 permissions:
@@ -115,15 +115,19 @@ permissions:
 Without it the action leaves a warning annotation and the job's success or
 failure is unaffected, which is what a pull request from a fork gets.
 
-Naming a `label` makes the findings usable as a merge condition — pair it with a
-branch protection rule, and a pull request cannot merge while the label is on
-it:
+Calling the action more than once on the same pull request — one plan per
+environment, say — needs a `target` on each call. It names the comment, so each
+call updates its own instead of overwriting the others':
 
 ```yaml
-- uses: nakamasato/tfgcpvalidator@v0
-  with:
-    plan: tfplan.json
-    label: deletion-protection
+strategy:
+  matrix:
+    env: [dev, staging, prod]
+steps:
+  - uses: nakamasato/tfgcpvalidator@v0
+    with:
+      plan: ${{ matrix.env }}/tfplan.json
+      target: ${{ matrix.env }}
 ```
 
 ### CLI

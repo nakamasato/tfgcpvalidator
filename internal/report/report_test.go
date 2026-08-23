@@ -16,7 +16,8 @@ var sample = []check.Finding{
 		Address:     "google_sql_database_instance.main",
 		Type:        "google_sql_database_instance",
 		Message:     "deletion_protection is set and this resource is being destroyed. The apply will fail.",
-		Remediation: "Apply deletion_protection = false on its own first.",
+		Fix:         "deletion_protection = false",
+		Remediation: "apply it before this change",
 	},
 }
 
@@ -49,7 +50,7 @@ func TestFormats(t *testing.T) {
 
 func TestTextIncludesEverything(t *testing.T) {
 	got := render(t, "text", sample)
-	for _, want := range []string{"ERROR", "google_sql_database_instance.main", "deletion_protection is set", "Apply deletion_protection = false"} {
+	for _, want := range []string{"ERROR", "google_sql_database_instance.main", "deletion_protection is set", "set deletion_protection = false", "before this change"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("text output missing %q:\n%s", want, got)
 		}
@@ -66,13 +67,53 @@ func TestTextWithNoFindings(t *testing.T) {
 	}
 }
 
-func TestMarkdownIsATable(t *testing.T) {
-	got := render(t, "markdown", sample)
-	if !strings.Contains(got, "|") || !strings.Contains(got, "---") {
-		t.Errorf("markdown output is not a table:\n%s", got)
+func TestMarkdownIsOneLinePerFinding(t *testing.T) {
+	findings := append(append([]check.Finding{}, sample...), check.Finding{
+		Check:    "destroy",
+		Severity: check.Warn,
+		Address:  "google_bigtable_table.events",
+		Message:  "line one\nline two",
+	})
+	got := render(t, "markdown", findings)
+
+	var headlines []string
+	for _, l := range strings.Split(got, "\n") {
+		if strings.HasPrefix(l, "❌") || strings.HasPrefix(l, "⚠️") {
+			headlines = append(headlines, l)
+		}
 	}
-	if !strings.Contains(got, "google_sql_database_instance.main") {
+	if len(headlines) != 2 {
+		t.Fatalf("want one headline per finding, got %d:\n%s", len(headlines), got)
+	}
+	if !strings.HasPrefix(headlines[0], "❌") {
+		t.Errorf("an error must be marked with a cross, got:\n%q", headlines[0])
+	}
+	if !strings.HasPrefix(headlines[1], "⚠️") {
+		t.Errorf("a warning must be marked as one, got:\n%q", headlines[1])
+	}
+	if !strings.Contains(headlines[0], "google_sql_database_instance.main") {
 		t.Errorf("markdown output missing the address:\n%s", got)
+	}
+	if !strings.Contains(headlines[1], "line one line two") {
+		t.Errorf("a newline in a message must not split the finding, got:\n%q", headlines[1])
+	}
+}
+
+func TestMarkdownPutsTheFixOnItsOwnLine(t *testing.T) {
+	got := render(t, "markdown", sample)
+	if !strings.Contains(got, "Fix: set `deletion_protection = false` and apply it before this change.") {
+		t.Errorf("markdown output missing the fix:\n%s", got)
+	}
+	// Without the hard break the fix joins the end of the finding's line.
+	if !strings.Contains(got, "The apply will fail.  \nFix:") {
+		t.Errorf("the fix needs a hard break before it:\n%s", got)
+	}
+}
+
+func TestMarkdownLeadsWithTheCounts(t *testing.T) {
+	got := render(t, "markdown", sample)
+	if !strings.HasPrefix(got, "**1 error**, 0 warnings") {
+		t.Errorf("markdown output should open with the counts, got:\n%s", got)
 	}
 }
 
@@ -134,26 +175,27 @@ func TestMarkdownEscapesAddress(t *testing.T) {
 		Check:       "destroy",
 		Address:     "google_storage_bucket.b[\"a|b`c\"]",
 		Message:     "deletion_protection is set",
+		Fix:         "deletion_protection = false",
 		Remediation: "fix it",
 	}}
 	got := render(t, "markdown", findings)
-	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
-	var row string
-	for _, l := range lines {
-		if strings.Contains(l, "a") && strings.Contains(l, "deletion_protection is set") {
-			row = l
+	var headline string
+	for _, l := range strings.Split(got, "\n") {
+		if strings.HasPrefix(l, "❌") {
+			headline = l
 			break
 		}
 	}
-	if row == "" {
-		t.Fatalf("could not find the finding's table row in:\n%s", got)
+	if headline == "" {
+		t.Fatalf("could not find the finding's line in:\n%s", got)
 	}
-	unescaped := strings.ReplaceAll(row, `\|`, "")
-	if strings.Count(unescaped, "|") != 5 {
-		t.Errorf("the pipe in the address must not add a table column (want 5 unescaped '|' for 4 columns), got row:\n%q", row)
+	if !strings.Contains(headline, "deletion_protection is set") {
+		t.Errorf("the backtick in the address must not swallow the message, got:\n%q", headline)
 	}
-	if !strings.Contains(row, "deletion_protection is set") || !strings.Contains(row, "fix it") {
-		t.Errorf("the backtick in the address must not leak the rest of the row as markup, got row:\n%q", row)
+	// A code span delimited by one backtick would end at the address's own
+	// backtick and render the rest as markup.
+	if strings.Contains(headline, "`` ") == strings.Contains(headline, "``` ") {
+		t.Errorf("the code span must be delimited by a longer backtick run than the address contains, got:\n%q", headline)
 	}
 }
 
