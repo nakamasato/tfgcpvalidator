@@ -57,7 +57,6 @@ jobs:
         with:
           plan: internal/check/destroy/testdata/schema_shaped_plan.json
           fail-on: never
-          label: tfgcpvalidator
 
       - name: Check the outputs
         env:

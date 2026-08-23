@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
-# Posts, updates, or hides the pull request comment, and adds or removes the
-# label, based on how many findings the run produced.
+# Posts, updates, or hides the pull request comment based on how many findings
+# the run produced.
 #
 # Inputs (environment):
 #   COMMENT   auto | true | false
-#   LABEL     label name, or empty to leave labels alone
+#   TARGET    name distinguishing one call from another, or empty
 #   FINDINGS  path to the `--format json` output
 #   MARKDOWN  path to the `--format markdown` output
 #   GH_TOKEN  token used for every API call
 set -euo pipefail
-
-# Every marker-matching comment is one this action owns, so the marker doubles
-# as the identity of the comment across runs.
-MARKER='<!-- tfgcpvalidator -->'
 
 # GitHub rejects an issue comment body over 65536 characters. The margin covers
 # the header, the marker, and the truncation notice appended after the cut.
@@ -31,16 +27,19 @@ pr_number() {
 # cannot kill gh mid-pagination.
 find_comment() {
   local matches
-  matches=$(gh api --paginate \
-    "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
-    --jq ".[] | select(.body | startswith(\"$MARKER\")) | \"\(.id) \(.node_id)\"")
+  matches=$(
+    gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+      --jq '.[] | {id, node_id, body}' |
+      jq -r --arg marker "$MARKER" \
+        'select(.body | startswith($marker)) | "\(.id) \(.node_id)"'
+  )
   printf '%s' "${matches%%$'\n'*}"
 }
 
 build_body() {
   local body
   body="$MARKER
-## tfgcpvalidator
+## GCP Validation$TITLE_SUFFIX
 
 $(cat "$MARKDOWN")"
 
@@ -120,19 +119,6 @@ hide_comment() {
   minimize_comment "$node_id" || return 1
 }
 
-add_label() {
-  jq -n --arg label "$LABEL" '{labels: [$label]}' |
-    gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --input - >/dev/null
-}
-
-remove_label() {
-  local encoded
-  encoded=$(jq -rn --arg label "$LABEL" '$label | @uri')
-  # A label that was never applied is not an error worth reporting.
-  gh api --method DELETE \
-    "repos/$GITHUB_REPOSITORY/issues/$PR/labels/$encoded" >/dev/null 2>&1 || true
-}
-
 apply() {
   local count
   count=$(jq '.findings | length' "$FINDINGS") || return 1
@@ -140,21 +126,19 @@ apply() {
   # errexit is off inside a function whose failure is handled by the caller, so
   # each call propagates its own failure explicitly.
   if [ "$count" -gt 0 ]; then
-    if [ "$want_comment" = true ]; then post_comment || return 1; fi
-    if [ -n "$LABEL" ]; then add_label || return 1; fi
+    post_comment || return 1
   else
-    if [ "$want_comment" = true ]; then hide_comment || return 1; fi
-    if [ -n "$LABEL" ]; then remove_label || return 1; fi
+    hide_comment || return 1
   fi
 }
 
 case "$COMMENT" in
-  false) want_comment=false ;;
-  true) want_comment=true ;;
+  false) exit 0 ;;
+  true) ;;
   auto)
     case "${GITHUB_EVENT_NAME:-}" in
-      pull_request | pull_request_target) want_comment=true ;;
-      *) want_comment=false ;;
+      pull_request | pull_request_target) ;;
+      *) exit 0 ;;
     esac
     ;;
   *)
@@ -163,17 +147,30 @@ case "$COMMENT" in
     ;;
 esac
 
-if [ "$want_comment" = false ] && [ -z "$LABEL" ]; then
-  exit 0
+# The target lands inside an HTML comment and inside a jq string, so anything
+# that could close the marker early or escape the string is refused outright.
+if [ -n "$TARGET" ] && ! [[ $TARGET =~ ^[A-Za-z0-9._/-]+$ ]]; then
+  echo "target may contain only letters, digits, and . _ / -, got: $TARGET" >&2
+  exit 2
+fi
+
+# The marker is the identity of the comment across runs, and the target is what
+# keeps two calls on one pull request from overwriting each other.
+if [ -n "$TARGET" ]; then
+  MARKER="<!-- tfgcpvalidator:$TARGET -->"
+  TITLE_SUFFIX=" ($TARGET)"
+else
+  MARKER='<!-- tfgcpvalidator -->'
+  TITLE_SUFFIX=''
 fi
 
 PR=$(pr_number 2>/dev/null || true)
 if [ -z "$PR" ]; then
-  warn "no pull request in this event, so no comment or label was written"
+  warn "no pull request in this event, so no comment was written"
   exit 0
 fi
 
 # The findings themselves are already reported by the Report step, so failing
 # here would only bury them — a token without pull-requests: write, which is
 # what a fork's pull_request event gets, degrades to a warning.
-apply || warn "could not write the comment or label; the token may lack pull-requests: write"
+apply || warn "could not write the comment; the token may lack pull-requests: write"
