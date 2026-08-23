@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/nakamasato/tfgcpvalidator/compare/v0.1.1...v0.1.2) (2026-08-23)
+
+
+### Features
+
+* name the comment with a target, and drop the label ([#7](https://github.com/nakamasato/tfgcpvalidator/issues/7)) ([1c6f89b](https://github.com/nakamasato/tfgcpvalidator/commit/1c6f89bf85cfd9fd7811e047fe74924bb4454297))
+
 ## [0.1.1](https://github.com/nakamasato/tfgcpvalidator/compare/v0.1.0...v0.1.1) (2026-08-22)
 
 
