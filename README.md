@@ -118,6 +118,10 @@ steps:
       target: ${{ matrix.env }}
 ```
 
+Using the action with [tfaction](https://github.com/suzuki-shunsuke/tfaction),
+which produces the plan JSON itself:
+[docs/tfaction.md](docs/tfaction.md).
+
 ### CLI
 
 ```bash
