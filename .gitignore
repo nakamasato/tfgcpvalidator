@@ -2,3 +2,8 @@
 *.tfplan
 tfplan.binary
 /.superpowers/
+
+# local-only Claude Code files
+.claude/CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
